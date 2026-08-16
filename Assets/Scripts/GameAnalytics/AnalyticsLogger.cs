@@ -11,8 +11,14 @@ public class AnalyticsLogger : MonoBehaviour
     [Tooltip("Name of the results file")]
     public string fileName = "MazeResults.txt";
 
-
     private string filePath;
+
+    // =====================================================
+    // START ROOM TIMER
+    // =====================================================
+
+    private float startRoomStartTime;
+    private bool startRoomTimerRunning = false;
 
 
     // =====================================================
@@ -30,20 +36,15 @@ public class AnalyticsLogger : MonoBehaviour
             return;
         }
 
-
         if (!Directory.Exists(saveFolderPath))
         {
-            Directory.CreateDirectory(
-                saveFolderPath
-            );
+            Directory.CreateDirectory(saveFolderPath);
         }
-
 
         filePath = Path.Combine(
             saveFolderPath,
             fileName
         );
-
 
         // ایجاد فایل جدید برای این اجرای بازی
         File.WriteAllText(
@@ -51,11 +52,69 @@ public class AnalyticsLogger : MonoBehaviour
             "MAZE ANALYTICS\n\n"
         );
 
-
         Debug.Log(
             "Analytics file created:\n" +
             filePath
         );
+    }
+
+
+    // =====================================================
+    // START START ROOM TIMER
+    // =====================================================
+
+    public void StartStartRoomTimer()
+    {
+        startRoomStartTime = Time.time;
+        startRoomTimerRunning = true;
+
+        Debug.Log(
+            "Start Room timer started."
+        );
+    }
+
+
+    // =====================================================
+    // SAVE START ROOM TIME
+    // =====================================================
+
+    public void SaveStartRoomTime()
+    {
+        if (!startRoomTimerRunning)
+        {
+            Debug.LogWarning(
+                "AnalyticsLogger: Start Room timer was not started!"
+            );
+
+            return;
+        }
+
+        float startRoomTime =
+            Time.time - startRoomStartTime;
+
+        string data =
+            "========================================\n" +
+            "START ROOM\n" +
+            "Time in Start Room: " +
+            startRoomTime.ToString("F2") +
+            " seconds\n" +
+            "========================================\n\n";
+
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            File.AppendAllText(
+                filePath,
+                data
+            );
+        }
+
+        Debug.Log(
+            "Start Room time saved: " +
+            startRoomTime.ToString("F2") +
+            " seconds"
+        );
+
+        startRoomTimerRunning = false;
     }
 
 
@@ -81,7 +140,6 @@ public class AnalyticsLogger : MonoBehaviour
             return;
         }
 
-
         string data =
             "========================================\n" +
             "MAZE " + mazeNumber +
@@ -93,12 +151,10 @@ public class AnalyticsLogger : MonoBehaviour
             " seconds\n" +
             "========================================\n\n";
 
-
         File.AppendAllText(
             filePath,
             data
         );
-
 
         Debug.Log(
             "Maze attempt saved: " +
@@ -121,7 +177,6 @@ public class AnalyticsLogger : MonoBehaviour
         if (string.IsNullOrEmpty(filePath))
             return;
 
-
         string data =
             "\n\n" +
             "****************************************\n" +
@@ -132,12 +187,10 @@ public class AnalyticsLogger : MonoBehaviour
             " seconds\n" +
             "****************************************\n";
 
-
         File.AppendAllText(
             filePath,
             data
         );
-
 
         Debug.Log(
             "Final game result saved.\n" +
