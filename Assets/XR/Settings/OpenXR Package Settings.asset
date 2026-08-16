@@ -639,7 +639,7 @@ MonoBehaviour:
     m_List: 00000000
   m_depthSubmissionMode: 0
   m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
+  m_optimizeBufferDiscards: 1
   m_symmetricProjection: 0
   m_optimizeMultiviewRenderRegions: 0
   m_multiviewRenderRegionsOptimizationMode: 0
@@ -836,7 +836,7 @@ MonoBehaviour:
         description: API layer that providing agentic interface for OpenXR
       m_JsonFileName: XrApiLayer_METAX_operator.json
       m_LibraryArchitecture: 1
-      m_IsEnabled: 0
+      m_IsEnabled: 1
 --- !u!114 &-13257657570488862
 MonoBehaviour:
   m_ObjectHideFlags: 0
