@@ -118,6 +118,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Maze Timer UI")]
 
+    public GameObject timerPanel;
     public TextMeshProUGUI timerText;
 
 
@@ -125,11 +126,13 @@ public class GameManager : MonoBehaviour
     // COIN UI 
     // ===================================================== 
 
+    [Header("Exit UI")]
+    public GameObject exitButton;
+
+
     [Header("Coin UI")]
-
+    public GameObject coinCounterPanel;
     public TextMeshProUGUI coinCounterText;
-
-
     // ===================================================== 
     // FINAL GAME UI 
     // ===================================================== 
@@ -338,9 +341,59 @@ public class GameManager : MonoBehaviour
 
 
         SetupCoinMode();
+        SetMazeUI(false);
     }
 
 
+
+
+    public void SetMazeUI(bool show)
+    {
+        // ==============================
+        // EXIT BUTTON
+        // ==============================
+
+        if (exitButton != null)
+            exitButton.SetActive(show);
+
+
+        // ==============================
+        // TIMER PANEL
+        // ==============================
+
+        if (timerPanel != null)
+            timerPanel.SetActive(show);
+
+
+        // ==============================
+        // TIMER TEXT
+        // ==============================
+
+        if (timerText != null)
+            timerText.gameObject.SetActive(show);
+
+
+        // ==============================
+        // COIN COUNTER
+        // ==============================
+
+        if (coinCounterPanel != null)
+        {
+            if (show && scoreMode == ScoreMode.CoinsAndMazeScore)
+                coinCounterPanel.SetActive(true);
+            else
+                coinCounterPanel.SetActive(false);
+        }
+
+
+        if (coinCounterText != null)
+        {
+            if (show && scoreMode == ScoreMode.CoinsAndMazeScore)
+                coinCounterText.gameObject.SetActive(true);
+            else
+                coinCounterText.gameObject.SetActive(false);
+        }
+    }
     // =====================================================
     // START GAME FROM MAZE 1
     // =====================================================
@@ -376,6 +429,7 @@ public class GameManager : MonoBehaviour
 
         // Start Maze 1.
         StartMaze(1);
+        SetMazeUI(true);
 
         // Start the total-game timer only after YES.
         if (totalGameTimerCoroutine != null)
@@ -394,6 +448,10 @@ public class GameManager : MonoBehaviour
     // COIN MODE SETUP 
     // ===================================================== 
 
+    // =====================================================
+    // COIN MODE SETUP
+    // =====================================================
+
     private void SetupCoinMode()
     {
         Coin[] allCoins =
@@ -403,14 +461,16 @@ public class GameManager : MonoBehaviour
             );
 
 
+        // =====================================================
+        // COINS
+        // =====================================================
+
         foreach (Coin coin in allCoins)
         {
             if (coin == null)
                 continue;
 
-
-            if (scoreMode ==
-                ScoreMode.CoinsAndMazeScore)
+            if (scoreMode == ScoreMode.CoinsAndMazeScore)
             {
                 coin.gameObject.SetActive(true);
             }
@@ -421,20 +481,30 @@ public class GameManager : MonoBehaviour
         }
 
 
-        if (scoreMode ==
-            ScoreMode.MazeScoreOnly)
+        // =====================================================
+        // COIN COUNTER PANEL
+        // =====================================================
+
+        if (scoreMode == ScoreMode.MazeScoreOnly)
         {
+            // کل پنل مخفی شود
+            if (coinCounterPanel != null)
+                coinCounterPanel.SetActive(false);
+
+            // خود Text هم مخفی شود
             if (coinCounterText != null)
                 coinCounterText.gameObject.SetActive(false);
         }
         else
         {
+            // کل پنل نمایش داده شود
+            if (coinCounterPanel != null)
+                coinCounterPanel.SetActive(true);
+
             if (coinCounterText != null)
                 coinCounterText.gameObject.SetActive(true);
         }
     }
-
-
     // ===================================================== 
     // START MAZE 
     // ===================================================== 
@@ -811,30 +881,37 @@ public class GameManager : MonoBehaviour
     // ===================================================== 
     // UPDATE COIN TEXT 
     // ===================================================== 
+    // =====================================================
+    // UPDATE COIN TEXT
+    // =====================================================
 
     private void UpdateCoinText()
     {
-        if (coinCounterText == null)
-            return;
-
-
-        if (scoreMode ==
-            ScoreMode.MazeScoreOnly)
+        if (scoreMode == ScoreMode.MazeScoreOnly)
         {
-            coinCounterText.gameObject.SetActive(false);
+            // کل پنل مخفی شود
+            if (coinCounterPanel != null)
+                coinCounterPanel.SetActive(false);
 
             return;
         }
 
 
-        coinCounterText.gameObject.SetActive(true);
+        // اگر سکه فعال است، پنل نمایش داده شود
+        if (coinCounterPanel != null)
+            coinCounterPanel.SetActive(true);
 
 
-        coinCounterText.text =
-            "Coins: " +
-            collectedCoins +
-            "/" +
-            totalCoins;
+        if (coinCounterText != null)
+        {
+            coinCounterText.gameObject.SetActive(true);
+
+            coinCounterText.text =
+                "Coins: " +
+                collectedCoins +
+                "/" +
+                totalCoins;
+        }
     }
 
 
@@ -917,10 +994,14 @@ public class GameManager : MonoBehaviour
 
     private void ShowMainTimer()
     {
+        // نمایش پنل تایمر
+        if (timerPanel != null)
+            timerPanel.SetActive(true);
+
+        // نمایش متن تایمر
         if (timerText != null)
             timerText.gameObject.SetActive(true);
     }
-
 
     // ===================================================== 
     // HIDE MAIN TIMER 
@@ -928,10 +1009,14 @@ public class GameManager : MonoBehaviour
 
     private void HideMainTimer()
     {
+        // مخفی کردن پنل تایمر
+        if (timerPanel != null)
+            timerPanel.SetActive(false);
+
+        // مخفی کردن متن تایمر
         if (timerText != null)
             timerText.gameObject.SetActive(false);
     }
-
 
     // ===================================================== 
     // STOP TIMER 
@@ -1304,10 +1389,7 @@ public class GameManager : MonoBehaviour
         if (successMessageText != null)
         {
             successMessageText.text =
-                "Congratulations!\n" +
-                "You successfully completed Maze " +
-                currentMaze +
-                ".";
+                "Level " + currentMaze + " Completed! ";
         }
 
 

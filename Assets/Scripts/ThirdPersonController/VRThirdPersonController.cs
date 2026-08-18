@@ -76,6 +76,9 @@ namespace StarterAssets
 
         private float verticalVelocity;
 
+        // قفل حرکت و چرخش Avatar
+        private bool movementLocked = false;
+
 
         // =====================================================
         // AWAKE
@@ -120,12 +123,40 @@ namespace StarterAssets
 
 
         // =====================================================
+        // MOVEMENT LOCK
+        // =====================================================
+
+        public void SetMovementLocked(bool locked)
+        {
+            movementLocked = locked;
+
+            // اگر حرکت قفل شد، انیمیشن هم متوقف شود
+            if (locked && animator != null)
+            {
+                animator.SetFloat("Speed", 0f);
+                animator.SetFloat("MotionSpeed", 0f);
+            }
+
+            // جلوگیری از باقی ماندن سرعت عمودی
+            if (locked)
+            {
+                verticalVelocity = 0f;
+            }
+        }
+
+
+        // =====================================================
         // UPDATE
         // =====================================================
 
         private void Update()
         {
             if (xrOrigin == null)
+                return;
+
+            // اگر حداقل یک پنل باز است،
+            // Avatar نه حرکت می‌کند و نه می‌چرخد
+            if (movementLocked)
                 return;
 
             MoveForward();
