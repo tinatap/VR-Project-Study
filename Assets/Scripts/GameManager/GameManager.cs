@@ -1,12 +1,13 @@
 using TMPro;
 using UnityEngine;
 using System.Collections;
+using System.Reflection;
 
 public class GameManager : MonoBehaviour
 {
-    // ===================================================== 
-    // SCORE MODE 
-    // ===================================================== 
+    // =====================================================
+    // SCORE MODE
+    // =====================================================
 
     public enum ScoreMode
     {
@@ -18,9 +19,9 @@ public class GameManager : MonoBehaviour
     public ScoreMode scoreMode = ScoreMode.CoinsAndMazeScore;
 
 
-    // ===================================================== 
-    // ANALYTICS 
-    // ===================================================== 
+    // =====================================================
+    // ANALYTICS
+    // =====================================================
 
     [Header("Analytics")]
 
@@ -36,19 +37,23 @@ public class GameManager : MonoBehaviour
 
     private bool finalResultSaved = false;
 
+    [Header("Music Manager")]
 
-    // ===================================================== 
-    // PLAYER 
-    // ===================================================== 
+    public MusicManager musicManager;
+
+
+    // =====================================================
+    // PLAYER
+    // =====================================================
 
     [Header("Player")]
 
     public Transform player;
 
 
-    // ===================================================== 
-    // MAZES 
-    // ===================================================== 
+    // =====================================================
+    // MAZES
+    // =====================================================
 
     [Header("Mazes")]
 
@@ -64,9 +69,9 @@ public class GameManager : MonoBehaviour
     public GameObject maze10;
 
 
-    // ===================================================== 
-    // SPAWN POINTS 
-    // ===================================================== 
+    // =====================================================
+    // SPAWN POINTS
+    // =====================================================
 
     [Header("Spawn Points")]
 
@@ -82,9 +87,9 @@ public class GameManager : MonoBehaviour
     public Transform maze10Spawn;
 
 
-    // ===================================================== 
-    // SUCCESS UI 
-    // ===================================================== 
+    // =====================================================
+    // SUCCESS UI
+    // =====================================================
 
     [Header("Success UI")]
 
@@ -97,9 +102,26 @@ public class GameManager : MonoBehaviour
     public float successPanelDuration = 3f;
 
 
-    // ===================================================== 
-    // TIME OVER UI 
-    // ===================================================== 
+    // =====================================================
+    // SUCCESS SOUND
+    // =====================================================
+
+    [Header("Success Sound")]
+
+    [Tooltip("AudioSource used to play the success sound.")]
+    public AudioSource successAudioSource;
+
+    [Tooltip("Sound played when a maze is successfully completed.")]
+    public AudioClip successSound;
+
+    [Range(0f, 1f)]
+    [Tooltip("Volume of the success sound.")]
+    public float successSoundVolume = 1f;
+
+
+    // =====================================================
+    // TIME OVER UI
+    // =====================================================
 
     [Header("Time Over UI")]
 
@@ -112,30 +134,69 @@ public class GameManager : MonoBehaviour
     public float restartDelay = 10f;
 
 
-    // ===================================================== 
-    // TIMER UI 
-    // ===================================================== 
+    // =====================================================
+    // TIME OVER SOUND
+    // =====================================================
+
+    [Header("Time Over Sound")]
+
+    [Tooltip("AudioSource used to play the fail sound.")]
+    public AudioSource timeOverAudioSource;
+
+    [Tooltip("Sound played when the maze timer reaches zero.")]
+    public AudioClip timeOverFailSound;
+
+    [Range(0f, 1f)]
+    [Tooltip("Volume of the fail sound.")]
+    public float timeOverSoundVolume = 1f;
+
+
+    // =====================================================
+    // FINAL GAME SOUND
+    // =====================================================
+
+    [Header("Final Game Sound")]
+
+    [Tooltip("AudioSource used to play the final game sound.")]
+    public AudioSource finalGameAudioSource;
+
+    [Tooltip("Sound played when the entire game finishes.")]
+    public AudioClip finalGameSound;
+
+    [Range(0f, 1f)]
+    [Tooltip("Volume of the final game sound.")]
+    public float finalGameSoundVolume = 1f;
+
+    // =====================================================
+    // TIMER UI
+    // =====================================================
 
     [Header("Maze Timer UI")]
 
     public GameObject timerPanel;
+
     public TextMeshProUGUI timerText;
 
 
-    // ===================================================== 
-    // COIN UI 
-    // ===================================================== 
+    // =====================================================
+    // COIN UI
+    // =====================================================
 
     [Header("Exit UI")]
+
     public GameObject exitButton;
 
 
     [Header("Coin UI")]
+
     public GameObject coinCounterPanel;
+
     public TextMeshProUGUI coinCounterText;
-    // ===================================================== 
-    // FINAL GAME UI 
-    // ===================================================== 
+
+
+    // =====================================================
+    // FINAL GAME UI
+    // =====================================================
 
     [Header("Final Game UI")]
 
@@ -145,129 +206,173 @@ public class GameManager : MonoBehaviour
 
     public TextMeshProUGUI finalScoreText;
 
+    // =====================================================
+    // FINAL SUCCESS UI (ALL MAZES COMPLETED)
+    // =====================================================
 
-    // ===================================================== 
-    // TOTAL GAME TIME 
-    // ===================================================== 
+    [Header("Final Success UI")]
+
+    public GameObject finalSuccessPanel;
+
+    public TextMeshProUGUI finalSuccessMessageText;
+
+    public TextMeshProUGUI finalSuccessScoreText;
+
+    // =====================================================
+    // FINAL SUCCESS SOUND
+    // =====================================================
+
+    [Header("Final Success Sound")]
+
+    public AudioSource finalSuccessAudioSource;
+
+    public AudioClip finalSuccessSound;
+
+    [Range(0f, 1f)]
+    public float finalSuccessSoundVolume = 1f;
+
+    // =====================================================
+    // TOTAL GAME TIME
+    // =====================================================
 
     [Header("Total Game Time")]
 
     public float totalGameTime = 3600f;
 
 
-    // ===================================================== 
-    // MAZE 01 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 01 SETTINGS
+    // =====================================================
 
     [Header("Maze 01 Settings")]
 
     public int maze01TotalCoins = 10;
+
     public float maze01Time = 30f;
+
     public int maze01Score = 10;
 
 
-    // ===================================================== 
-    // MAZE 02 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 02 SETTINGS
+    // =====================================================
 
     [Header("Maze 02 Settings")]
 
     public int maze02TotalCoins = 15;
+
     public float maze02Time = 40f;
+
     public int maze02Score = 20;
 
 
-    // ===================================================== 
-    // MAZE 03 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 03 SETTINGS
+    // =====================================================
 
     [Header("Maze 03 Settings")]
 
     public int maze03TotalCoins = 20;
+
     public float maze03Time = 45f;
+
     public int maze03Score = 30;
 
 
-    // ===================================================== 
-    // MAZE 04 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 04 SETTINGS
+    // =====================================================
 
     [Header("Maze 04 Settings")]
 
     public int maze04TotalCoins = 25;
+
     public float maze04Time = 50f;
+
     public int maze04Score = 40;
 
 
-    // ===================================================== 
-    // MAZE 05 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 05 SETTINGS
+    // =====================================================
 
     [Header("Maze 05 Settings")]
 
     public int maze05TotalCoins = 30;
+
     public float maze05Time = 55f;
+
     public int maze05Score = 50;
 
 
-    // ===================================================== 
-    // MAZE 06 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 06 SETTINGS
+    // =====================================================
 
     [Header("Maze 06 Settings")]
 
     public int maze06TotalCoins = 35;
+
     public float maze06Time = 60f;
+
     public int maze06Score = 60;
 
 
-    // ===================================================== 
-    // MAZE 07 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 07 SETTINGS
+    // =====================================================
 
     [Header("Maze 07 Settings")]
 
     public int maze07TotalCoins = 40;
+
     public float maze07Time = 65f;
+
     public int maze07Score = 70;
 
 
-    // ===================================================== 
-    // MAZE 08 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 08 SETTINGS
+    // =====================================================
 
     [Header("Maze 08 Settings")]
 
     public int maze08TotalCoins = 45;
+
     public float maze08Time = 70f;
+
     public int maze08Score = 80;
 
 
-    // ===================================================== 
-    // MAZE 09 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 09 SETTINGS
+    // =====================================================
 
     [Header("Maze 09 Settings")]
 
     public int maze09TotalCoins = 50;
+
     public float maze09Time = 75f;
+
     public int maze09Score = 90;
 
 
-    // ===================================================== 
-    // MAZE 10 SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 10 SETTINGS
+    // =====================================================
 
     [Header("Maze 10 Settings")]
 
     public int maze10TotalCoins = 55;
+
     public float maze10Time = 80f;
+
     public int maze10Score = 100;
 
 
-    // ===================================================== 
-    // PRIVATE VARIABLES 
-    // ===================================================== 
+    // =====================================================
+    // PRIVATE VARIABLES
+    // =====================================================
 
     private CharacterController characterController;
 
@@ -287,7 +392,6 @@ public class GameManager : MonoBehaviour
 
     private int currentMazeScore;
 
-    // فقط امتیاز Mazeهای موفق 
     private int totalScore = 0;
 
     private float currentMazeTime;
@@ -301,9 +405,9 @@ public class GameManager : MonoBehaviour
     private bool gameFinished = false;
 
 
-    // ===================================================== 
-    // AWAKE 
-    // ===================================================== 
+    // =====================================================
+    // AWAKE
+    // =====================================================
 
     private void Awake()
     {
@@ -315,85 +419,75 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // START 
-    // ===================================================== 
+    // =====================================================
+    // START
+    // =====================================================
 
     private void Start()
     {
-        // Game does NOT start automatically.
-        // The Start Room menu will call StartGameFromMaze1()
-        // after the player selects YES.
-
         if (successPanel01 != null)
             successPanel01.SetActive(false);
-
 
         if (timeOverPanel != null)
             timeOverPanel.SetActive(false);
 
-
         if (finalGamePanel != null)
             finalGamePanel.SetActive(false);
 
+        if (finalSuccessPanel != null)
+            finalSuccessPanel.SetActive(false);
 
         SetAllMazesInactive();
 
-
         SetupCoinMode();
+
         SetMazeUI(false);
     }
 
 
-
+    // =====================================================
+    // SET MAZE UI
+    // =====================================================
 
     public void SetMazeUI(bool show)
     {
-        // ==============================
-        // EXIT BUTTON
-        // ==============================
-
         if (exitButton != null)
             exitButton.SetActive(show);
-
-
-        // ==============================
-        // TIMER PANEL
-        // ==============================
 
         if (timerPanel != null)
             timerPanel.SetActive(show);
 
-
-        // ==============================
-        // TIMER TEXT
-        // ==============================
-
         if (timerText != null)
             timerText.gameObject.SetActive(show);
 
-
-        // ==============================
-        // COIN COUNTER
-        // ==============================
-
         if (coinCounterPanel != null)
         {
-            if (show && scoreMode == ScoreMode.CoinsAndMazeScore)
+            if (show &&
+                scoreMode == ScoreMode.CoinsAndMazeScore)
+            {
                 coinCounterPanel.SetActive(true);
+            }
             else
+            {
                 coinCounterPanel.SetActive(false);
+            }
         }
-
 
         if (coinCounterText != null)
         {
-            if (show && scoreMode == ScoreMode.CoinsAndMazeScore)
+            if (show &&
+                scoreMode == ScoreMode.CoinsAndMazeScore)
+            {
                 coinCounterText.gameObject.SetActive(true);
+            }
             else
+            {
                 coinCounterText.gameObject.SetActive(false);
+            }
         }
     }
+
+
     // =====================================================
     // START GAME FROM MAZE 1
     // =====================================================
@@ -403,23 +497,26 @@ public class GameManager : MonoBehaviour
         if (gameFinished)
             return;
 
-        // Start the real game timer when the player presses YES.
         gameStartTime = Time.time;
 
-        // Reset the current run.
         currentMaze = 1;
+
         totalScore = 0;
+
         collectedCoins = 0;
 
         stageCompleted = false;
+
         waitingForRestart = false;
+
         changingMaze = false;
+
         gameFinished = false;
 
         currentAttemptSaved = false;
+
         finalResultSaved = false;
 
-        // Prepare Maze 1.
         SetAllMazesInactive();
 
         ResetAllCoins();
@@ -427,11 +524,16 @@ public class GameManager : MonoBehaviour
         if (maze01 != null)
             maze01.SetActive(true);
 
-        // Start Maze 1.
+        if (EnvironmentManager.Instance != null)
+        {
+            EnvironmentManager.Instance
+                .ApplyDecorationsForMaze(0);
+        }
+
         StartMaze(1);
+
         SetMazeUI(true);
 
-        // Start the total-game timer only after YES.
         if (totalGameTimerCoroutine != null)
             StopCoroutine(totalGameTimerCoroutine);
 
@@ -440,13 +542,11 @@ public class GameManager : MonoBehaviour
                 TotalGameTimer()
             );
 
-        Debug.Log("Game started from Maze 1.");
+        Debug.Log(
+            "Game started from Maze 1."
+        );
     }
 
-
-    // =====================================================
-    // COIN MODE SETUP 
-    // ===================================================== 
 
     // =====================================================
     // COIN MODE SETUP
@@ -460,17 +560,13 @@ public class GameManager : MonoBehaviour
                 FindObjectsSortMode.None
             );
 
-
-        // =====================================================
-        // COINS
-        // =====================================================
-
         foreach (Coin coin in allCoins)
         {
             if (coin == null)
                 continue;
 
-            if (scoreMode == ScoreMode.CoinsAndMazeScore)
+            if (scoreMode ==
+                ScoreMode.CoinsAndMazeScore)
             {
                 coin.gameObject.SetActive(true);
             }
@@ -480,24 +576,17 @@ public class GameManager : MonoBehaviour
             }
         }
 
-
-        // =====================================================
-        // COIN COUNTER PANEL
-        // =====================================================
-
-        if (scoreMode == ScoreMode.MazeScoreOnly)
+        if (scoreMode ==
+            ScoreMode.MazeScoreOnly)
         {
-            // کل پنل مخفی شود
             if (coinCounterPanel != null)
                 coinCounterPanel.SetActive(false);
 
-            // خود Text هم مخفی شود
             if (coinCounterText != null)
                 coinCounterText.gameObject.SetActive(false);
         }
         else
         {
-            // کل پنل نمایش داده شود
             if (coinCounterPanel != null)
                 coinCounterPanel.SetActive(true);
 
@@ -505,9 +594,11 @@ public class GameManager : MonoBehaviour
                 coinCounterText.gameObject.SetActive(true);
         }
     }
-    // ===================================================== 
-    // START MAZE 
-    // ===================================================== 
+
+
+    // =====================================================
+    // START MAZE
+    // =====================================================
 
     private void StartMaze(int mazeNumber)
     {
@@ -519,31 +610,23 @@ public class GameManager : MonoBehaviour
 
         changingMaze = false;
 
-
-        // Attempt جدید 
         mazeAttemptCount[mazeNumber]++;
 
         currentAttemptSaved = false;
 
         mazeStartTime = Time.time;
 
-
         SetMazeSettings(mazeNumber);
 
-
         ResetCoins();
-
 
         MovePlayer(
             GetSpawnPoint(mazeNumber)
         );
 
-
         ShowMainTimer();
 
-
         StartMazeTimer();
-
 
         Debug.Log(
             "Maze " +
@@ -554,9 +637,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SET MAZE SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // SET MAZE SETTINGS
+    // =====================================================
 
     private void SetMazeSettings(int mazeNumber)
     {
@@ -623,7 +706,6 @@ public class GameManager : MonoBehaviour
                 break;
         }
 
-
         if (scoreMode ==
             ScoreMode.MazeScoreOnly)
         {
@@ -632,9 +714,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // GET SPAWN POINT 
-    // ===================================================== 
+    // =====================================================
+    // GET SPAWN POINT
+    // =====================================================
 
     private Transform GetSpawnPoint(int mazeNumber)
     {
@@ -675,9 +757,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // GET MAZE 
-    // ===================================================== 
+    // =====================================================
+    // GET MAZE
+    // =====================================================
 
     private GameObject GetMaze(int mazeNumber)
     {
@@ -718,9 +800,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // DISABLE ALL MAZES 
-    // ===================================================== 
+    // =====================================================
+    // DISABLE ALL MAZES
+    // =====================================================
 
     private void SetAllMazesInactive()
     {
@@ -756,9 +838,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // MOVE PLAYER 
-    // ===================================================== 
+    // =====================================================
+    // MOVE PLAYER
+    // =====================================================
 
     private void MovePlayer(Transform spawn)
     {
@@ -771,7 +853,6 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         if (spawn == null)
         {
             Debug.LogWarning(
@@ -781,25 +862,22 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         if (characterController != null)
             characterController.enabled = false;
-
 
         player.SetPositionAndRotation(
             spawn.position,
             spawn.rotation
         );
 
-
         if (characterController != null)
             characterController.enabled = true;
     }
 
 
-    // ===================================================== 
-    // RESET ALL COINS 
-    // ===================================================== 
+    // =====================================================
+    // RESET ALL COINS
+    // =====================================================
 
     private void ResetAllCoins()
     {
@@ -808,7 +886,6 @@ public class GameManager : MonoBehaviour
                 FindObjectsInactive.Include,
                 FindObjectsSortMode.None
             );
-
 
         foreach (Coin coin in allCoins)
         {
@@ -828,9 +905,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // COLLECT COIN 
-    // ===================================================== 
+    // =====================================================
+    // COLLECT COIN
+    // =====================================================
 
     public void CollectCoin()
     {
@@ -840,7 +917,6 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         if (stageCompleted ||
             changingMaze ||
             waitingForRestart ||
@@ -849,26 +925,18 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         if (collectedCoins >= totalCoins)
             return;
 
-
         collectedCoins++;
-
-
-        // مهم: 
-        // اینجا totalScore تغییر نمی‌کند. 
-        // سکه فقط در صورت موفقیت Maze 
-        // وارد Total Score می‌شود. 
 
         UpdateCoinText();
     }
 
 
-    // ===================================================== 
-    // RESET COINS 
-    // ===================================================== 
+    // =====================================================
+    // RESET COINS
+    // =====================================================
 
     private void ResetCoins()
     {
@@ -878,29 +946,23 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // UPDATE COIN TEXT 
-    // ===================================================== 
     // =====================================================
     // UPDATE COIN TEXT
     // =====================================================
 
     private void UpdateCoinText()
     {
-        if (scoreMode == ScoreMode.MazeScoreOnly)
+        if (scoreMode ==
+            ScoreMode.MazeScoreOnly)
         {
-            // کل پنل مخفی شود
             if (coinCounterPanel != null)
                 coinCounterPanel.SetActive(false);
 
             return;
         }
 
-
-        // اگر سکه فعال است، پنل نمایش داده شود
         if (coinCounterPanel != null)
             coinCounterPanel.SetActive(true);
-
 
         if (coinCounterText != null)
         {
@@ -915,14 +977,13 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // MAIN MAZE TIMER 
-    // ===================================================== 
+    // =====================================================
+    // MAIN MAZE TIMER
+    // =====================================================
 
     private void StartMazeTimer()
     {
         StopMazeTimer();
-
 
         timerCoroutine =
             StartCoroutine(
@@ -936,7 +997,6 @@ public class GameManager : MonoBehaviour
         float remainingTime =
             currentMazeTime;
 
-
         while (remainingTime > 0f)
         {
             if (stageCompleted ||
@@ -947,40 +1007,33 @@ public class GameManager : MonoBehaviour
                 yield break;
             }
 
-
             UpdateTimerText(
                 remainingTime
             );
 
-
             yield return null;
-
 
             remainingTime -=
                 Time.deltaTime;
         }
 
-
         UpdateTimerText(0f);
-
 
         TimerFinished();
     }
 
 
-    // ===================================================== 
-    // UPDATE TIMER TEXT 
-    // ===================================================== 
+    // =====================================================
+    // UPDATE TIMER TEXT
+    // =====================================================
 
     private void UpdateTimerText(float time)
     {
         if (timerText == null)
             return;
 
-
         int seconds =
             Mathf.CeilToInt(time);
-
 
         timerText.text =
             "Time: " +
@@ -988,39 +1041,37 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SHOW MAIN TIMER 
-    // ===================================================== 
+    // =====================================================
+    // SHOW MAIN TIMER
+    // =====================================================
 
     private void ShowMainTimer()
     {
-        // نمایش پنل تایمر
         if (timerPanel != null)
             timerPanel.SetActive(true);
 
-        // نمایش متن تایمر
         if (timerText != null)
             timerText.gameObject.SetActive(true);
     }
 
-    // ===================================================== 
-    // HIDE MAIN TIMER 
-    // ===================================================== 
+
+    // =====================================================
+    // HIDE MAIN TIMER
+    // =====================================================
 
     private void HideMainTimer()
     {
-        // مخفی کردن پنل تایمر
         if (timerPanel != null)
             timerPanel.SetActive(false);
 
-        // مخفی کردن متن تایمر
         if (timerText != null)
             timerText.gameObject.SetActive(false);
     }
 
-    // ===================================================== 
-    // STOP TIMER 
-    // ===================================================== 
+
+    // =====================================================
+    // STOP TIMER
+    // =====================================================
 
     private void StopMazeTimer()
     {
@@ -1035,9 +1086,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SAVE CURRENT MAZE ATTEMPT 
-    // ===================================================== 
+    // =====================================================
+    // SAVE CURRENT MAZE ATTEMPT
+    // =====================================================
 
     private void SaveCurrentMazeAttempt(
         string result
@@ -1045,7 +1096,6 @@ public class GameManager : MonoBehaviour
     {
         if (currentAttemptSaved)
             return;
-
 
         if (analyticsLogger == null)
         {
@@ -1056,11 +1106,9 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         float attemptTime =
             Time.time -
             mazeStartTime;
-
 
         analyticsLogger.SaveMazeAttempt(
             currentMaze,
@@ -1071,9 +1119,7 @@ public class GameManager : MonoBehaviour
             attemptTime
         );
 
-
         currentAttemptSaved = true;
-
 
         Debug.Log(
             "Analytics saved: " +
@@ -1091,9 +1137,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // TIME OVER 
-    // ===================================================== 
+    // =====================================================
+    // TIME OVER
+    // =====================================================
 
     private void TimerFinished()
     {
@@ -1105,82 +1151,47 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         waitingForRestart = true;
-
 
         StopMazeTimer();
 
-
-        // ذخیره تلاش ناموفق 
         SaveCurrentMazeAttempt(
             "FAILED - TIME OVER"
         );
 
-
-        // ================================================= 
-        // RESET ENTIRE RUN SCORE 
-        // ================================================= 
-
         totalScore = 0;
-
-
-        // ================================================= 
-        // RESET COINS 
-        // ================================================= 
 
         collectedCoins = 0;
 
         ResetAllCoins();
 
-
-        // ================================================= 
-        // CLOSE ALL MAZES 
-        // ================================================= 
-
         SetAllMazesInactive();
-
-
-        // ================================================= 
-        // OPEN MAZE 1 
-        // ================================================= 
 
         if (maze01 != null)
             maze01.SetActive(true);
 
+        if (EnvironmentManager.Instance != null)
+        {
+            EnvironmentManager.Instance
+                .ApplyDecorationsForMaze(0);
+        }
 
         currentMaze = 1;
 
-
         SetMazeSettings(1);
-
 
         MovePlayer(
             maze01Spawn
         );
 
-
         UpdateCoinText();
 
-
-        // ================================================= 
-        // HIDE TIMER 
-        // ================================================= 
-
         HideMainTimer();
-
-
-        // ================================================= 
-        // SHOW TIME OVER PANEL 
-        // ================================================= 
 
         if (timeOverPanel != null)
             timeOverPanel.SetActive(true);
 
-
-        // ================================================= 
-        // RESTART COUNTDOWN 
-        // ================================================= 
+        PlayTimeOverSound();
 
         restartCoroutine =
             StartCoroutine(
@@ -1189,15 +1200,45 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // RESTART COUNTDOWN 
-    // ===================================================== 
+    // =====================================================
+    // PLAY TIME OVER SOUND
+    // =====================================================
+
+    private void PlayTimeOverSound()
+    {
+        if (timeOverAudioSource == null)
+        {
+            Debug.LogWarning(
+                "GameManager: Time Over Audio Source is not assigned!"
+            );
+
+            return;
+        }
+
+        if (timeOverFailSound == null)
+        {
+            Debug.LogWarning(
+                "GameManager: Time Over Fail Sound is not assigned!"
+            );
+
+            return;
+        }
+
+        timeOverAudioSource.PlayOneShot(
+            timeOverFailSound,
+            timeOverSoundVolume
+        );
+    }
+
+
+    // =====================================================
+    // RESTART COUNTDOWN
+    // =====================================================
 
     private IEnumerator RestartFromMaze01Countdown()
     {
         float remainingTime =
             restartDelay;
-
 
         while (remainingTime > 0f)
         {
@@ -1208,73 +1249,67 @@ public class GameManager : MonoBehaviour
                         remainingTime
                     );
 
-
                 restartCountdownText.text =
                     "Restarting from Maze 1 in " +
                     seconds +
                     " seconds";
             }
 
-
             yield return null;
-
 
             remainingTime -=
                 Time.deltaTime;
         }
 
-
         RestartFromMaze01();
     }
 
 
-    // ===================================================== 
-    // RESTART FROM MAZE 1 
-    // ===================================================== 
+    // =====================================================
+    // RESTART FROM MAZE 1
+    // =====================================================
 
     private void RestartFromMaze01()
     {
+        ResetAllExitTriggers();
         waitingForRestart = false;
 
         stageCompleted = false;
 
         changingMaze = false;
 
-
         if (timeOverPanel != null)
             timeOverPanel.SetActive(false);
 
-
         SetAllMazesInactive();
-
 
         if (maze01 != null)
             maze01.SetActive(true);
 
+        if (EnvironmentManager.Instance != null)
+        {
+            EnvironmentManager.Instance
+                .ApplyDecorationsForMaze(0);
+        }
 
         currentMaze = 1;
 
-
         SetMazeSettings(1);
-
 
         MovePlayer(
             maze01Spawn
         );
 
+        ResetAllExitTriggers();
 
         ResetAllCoins();
 
 
         ResetCoins();
 
-
         ShowMainTimer();
 
-
-        // Attempt جدید Maze 1 
         StartMaze(1);
-
 
         Debug.Log(
             "New Run started from Maze 1."
@@ -1282,12 +1317,20 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // MAZE COMPLETED 
-    // ===================================================== 
+    // =====================================================
+    // MAZE COMPLETED
+    // =====================================================
 
     public void MazeCompleted()
     {
+        Debug.Log(
+        "========== MAZE COMPLETED ==========\n" +
+        "Current Maze: " + currentMaze +
+        "\nStage Completed: " + stageCompleted +
+        "\nChanging Maze: " + changingMaze +
+        "\nWaiting Restart: " + waitingForRestart +
+        "\nGame Finished: " + gameFinished
+    );
         if (stageCompleted ||
             changingMaze ||
             waitingForRestart ||
@@ -1296,24 +1339,16 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-
         stageCompleted = true;
 
         changingMaze = true;
-
 
         StopMazeTimer();
 
         HideMainTimer();
 
-
-        // ================================================= 
-        // CALCULATE SUCCESSFUL MAZE SCORE 
-        // ================================================= 
-
         int mazeResultScore =
             currentMazeScore;
-
 
         if (scoreMode ==
             ScoreMode.CoinsAndMazeScore)
@@ -1322,14 +1357,8 @@ public class GameManager : MonoBehaviour
                 collectedCoins;
         }
 
-
-        // ================================================= 
-        // ADD ONLY SUCCESSFUL MAZE 
-        // ================================================= 
-
         totalScore +=
             mazeResultScore;
-
 
         Debug.Log(
             "Maze " +
@@ -1345,19 +1374,15 @@ public class GameManager : MonoBehaviour
             totalScore
         );
 
-
-        // ================================================= 
-        // SAVE SUCCESS 
-        // ================================================= 
-
         SaveCurrentMazeAttempt(
             "SUCCESS"
         );
 
+        // =============================================
+        // PLAY SUCCESS SOUND
+        // =============================================
 
-        // ================================================= 
-        // NEXT MAZE 
-        // ================================================= 
+        PlaySuccessSound();
 
         if (currentMaze < 10)
         {
@@ -1376,26 +1401,56 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SUCCESS → NEXT MAZE 
-    // ===================================================== 
+    // =====================================================
+    // PLAY SUCCESS SOUND
+    // =====================================================
+
+    private void PlaySuccessSound()
+    {
+        if (successAudioSource == null)
+        {
+            Debug.LogWarning(
+                "GameManager: Success Audio Source is not assigned!"
+            );
+
+            return;
+        }
+
+        if (successSound == null)
+        {
+            Debug.LogWarning(
+                "GameManager: Success Sound is not assigned!"
+            );
+
+            return;
+        }
+
+        successAudioSource.PlayOneShot(
+            successSound,
+            successSoundVolume
+        );
+    }
+
+
+    // =====================================================
+    // SUCCESS → NEXT MAZE
+    // =====================================================
 
     private IEnumerator ShowSuccessAndLoadNextMaze()
     {
         if (successPanel01 != null)
             successPanel01.SetActive(true);
 
-
         if (successMessageText != null)
         {
             successMessageText.text =
-                "Level " + currentMaze + " Completed! ";
+                "Level " +
+                currentMaze +
+                " Completed! ";
         }
-
 
         float remainingTime =
             successPanelDuration;
-
 
         while (remainingTime > 0f)
         {
@@ -1406,127 +1461,146 @@ public class GameManager : MonoBehaviour
                         remainingTime
                     );
 
-
                 successCountdownText.text =
                     "Next maze starts in: " +
                     seconds;
             }
 
-
             yield return null;
-
 
             remainingTime -=
                 Time.deltaTime;
         }
 
-
         if (successPanel01 != null)
             successPanel01.SetActive(false);
-
 
         GameObject currentMazeObject =
             GetMaze(currentMaze);
 
-
         if (currentMazeObject != null)
             currentMazeObject.SetActive(false);
 
-
         currentMaze++;
-
 
         GameObject nextMaze =
             GetMaze(currentMaze);
 
-
         if (nextMaze != null)
             nextMaze.SetActive(true);
 
+        if (EnvironmentManager.Instance != null)
+        {
+            EnvironmentManager.Instance
+                .ApplyDecorationsForMaze(
+                    currentMaze - 1
+                );
+        }
 
         StartMaze(
             currentMaze
         );
 
-
         successCoroutine = null;
     }
 
 
-    // ===================================================== 
-    // MAZE 10 COMPLETED 
-    // ===================================================== 
+    // =====================================================
+    // MAZE 10 COMPLETED
+    // =====================================================
 
     private IEnumerator ShowFinalSuccess()
     {
-        if (successPanel01 != null)
-            successPanel01.SetActive(true);
-
-
-        if (successMessageText != null)
+        // توقف موزیک زمینه
+        if (musicManager != null)
         {
-            successMessageText.text =
-                "Congratulations!\n" +
+            musicManager.StopBackgroundMusic();
+        }
+
+
+        // توقف تایمر کلی بازی
+        if (totalGameTimerCoroutine != null)
+        {
+            StopCoroutine(totalGameTimerCoroutine);
+            totalGameTimerCoroutine = null;
+        }
+
+
+        // پخش صدای موفقیت نهایی
+        PlayFinalSuccessSound();
+
+
+
+        // باز کردن پنل مخصوص پایان موفقیت
+        if (finalSuccessPanel != null)
+            finalSuccessPanel.SetActive(true);
+
+
+
+        if (finalSuccessMessageText != null)
+        {
+            finalSuccessMessageText.text =
+                "Congratulations!\n\n" +
                 "You successfully completed all 10 mazes!";
         }
 
 
-        float remainingTime =
-            successPanelDuration;
 
-
-        while (remainingTime > 0f)
+        if (finalSuccessScoreText != null)
         {
-            if (successCountdownText != null)
-            {
-                successCountdownText.text =
-                    "Completed!";
-            }
-
-
-            yield return null;
-
-
-            remainingTime -=
-                Time.deltaTime;
+            finalSuccessScoreText.text =
+                "Final Score: " + totalScore;
         }
 
 
-        if (successPanel01 != null)
-            successPanel01.SetActive(false);
+
+        // ذخیره نتیجه نهایی
+        if (!finalResultSaved)
+        {
+            finalResultSaved = true;
+
+            if (analyticsLogger != null)
+            {
+                analyticsLogger.SaveFinalResult(
+                    "SUCCESS - ALL MAZES COMPLETED",
+                    Time.time - gameStartTime
+                );
+            }
+        }
 
 
-        successCoroutine = null;
+
+        // پایان واقعی بازی
+        gameFinished = true;
+
+
+        // جلوگیری از حرکت
+        Time.timeScale = 0f;
+
+
+        yield break;
     }
 
 
-    // ===================================================== 
-    // TOTAL GAME TIMER 
-    // ===================================================== 
+    // =====================================================
+    // TOTAL GAME TIMER
+    // =====================================================
 
     private IEnumerator TotalGameTimer()
     {
         float remainingTime =
             totalGameTime;
 
-
         while (remainingTime > 0f)
         {
             if (gameFinished)
                 yield break;
 
-
             yield return null;
-
 
             remainingTime -=
                 Time.deltaTime;
         }
-
-
-        // ================================================= 
-        // SAVE CURRENT INCOMPLETE MAZE 
-        // ================================================= 
 
         if (!gameFinished &&
             !stageCompleted &&
@@ -1537,12 +1611,6 @@ public class GameManager : MonoBehaviour
             );
         }
 
-
-        // ================================================= 
-        // IMPORTANT: 
-        // DO NOT RESET TOTAL SCORE HERE 
-        // ================================================= 
-
         FinishEntireGame(
             "FAILED - TOTAL TIME OVER",
             totalGameTime
@@ -1550,18 +1618,14 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // EXIT GAME 
-    // ===================================================== 
+    // =====================================================
+    // EXIT GAME
+    // =====================================================
 
     public void ExitGame()
     {
         if (gameFinished)
             return;
-
-
-        // اگر در یک Maze نیمه‌تمام هستیم، 
-        // آن را به عنوان EXIT ذخیره کن. 
 
         if (!currentAttemptSaved &&
             !stageCompleted &&
@@ -1573,12 +1637,9 @@ public class GameManager : MonoBehaviour
             );
         }
 
-
-        // زمان واقعی از شروع بازی تا Exit 
         float realTotalGameTime =
             Time.time -
             gameStartTime;
-
 
         FinishEntireGame(
             "FAILED - EXIT",
@@ -1587,9 +1648,9 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // FINAL GAME 
-    // ===================================================== 
+    // =====================================================
+    // FINAL GAME
+    // =====================================================
 
     private void FinishEntireGame(
         string finalResult,
@@ -1599,12 +1660,18 @@ public class GameManager : MonoBehaviour
         if (gameFinished)
             return;
 
-
         gameFinished = true;
 
 
-        StopMazeTimer();
+        // Stop background music
+        if (musicManager != null)
+        {
+            musicManager.StopBackgroundMusic();
+        }
 
+        PlayFinalGameSound();
+
+        StopMazeTimer();
 
         if (restartCoroutine != null)
         {
@@ -1615,7 +1682,6 @@ public class GameManager : MonoBehaviour
             restartCoroutine = null;
         }
 
-
         if (successCoroutine != null)
         {
             StopCoroutine(
@@ -1624,7 +1690,6 @@ public class GameManager : MonoBehaviour
 
             successCoroutine = null;
         }
-
 
         if (totalGameTimerCoroutine != null)
         {
@@ -1635,26 +1700,17 @@ public class GameManager : MonoBehaviour
             totalGameTimerCoroutine = null;
         }
 
-
         if (successPanel01 != null)
             successPanel01.SetActive(false);
-
 
         if (timeOverPanel != null)
             timeOverPanel.SetActive(false);
 
-
         HideMainTimer();
-
-
-        // ================================================= 
-        // SAVE FINAL ANALYTICS 
-        // ================================================= 
 
         if (!finalResultSaved)
         {
             finalResultSaved = true;
-
 
             if (analyticsLogger != null)
             {
@@ -1665,14 +1721,8 @@ public class GameManager : MonoBehaviour
             }
         }
 
-
-        // ================================================= 
-        // FINAL UI 
-        // ================================================= 
-
         if (finalGamePanel != null)
             finalGamePanel.SetActive(true);
-
 
         if (finalGameMessageText != null)
         {
@@ -1680,14 +1730,12 @@ public class GameManager : MonoBehaviour
                 "Game Over";
         }
 
-
         if (finalScoreText != null)
         {
             finalScoreText.text =
                 "Total Score: " +
                 totalScore;
         }
-
 
         Debug.Log(
             "Game finished.\n" +
@@ -1700,7 +1748,86 @@ public class GameManager : MonoBehaviour
             totalScore
         );
 
-
         Time.timeScale = 0f;
+    }
+
+    // =====================================================
+    // PLAY FINAL GAME SOUND
+    // =====================================================
+
+    private void PlayFinalGameSound()
+    {
+        if (finalGameAudioSource == null)
+        {
+            Debug.LogWarning(
+                "GameManager: Final Game Audio Source is not assigned!"
+            );
+
+            return;
+        }
+
+        if (finalGameSound == null)
+        {
+            Debug.LogWarning(
+                "GameManager: Final Game Sound is not assigned!"
+            );
+
+            return;
+        }
+
+        finalGameAudioSource.PlayOneShot(
+            finalGameSound,
+            finalGameSoundVolume
+        );
+    }
+    private void ResetAllExitTriggers()
+    {
+        ExitTrigger[] exits =
+            FindObjectsByType<ExitTrigger>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+        foreach (ExitTrigger exit in exits)
+        {
+            FieldInfo field =
+                typeof(ExitTrigger)
+                .GetField(
+                    "completed",
+                    BindingFlags.NonPublic |
+                    BindingFlags.Instance
+                );
+
+            if (field != null)
+            {
+                field.SetValue(exit, false);
+            }
+        }
+
+        Debug.Log("All ExitTriggers reset.");
+    }
+
+    private void PlayFinalSuccessSound()
+    {
+        if (finalSuccessAudioSource == null)
+        {
+            Debug.LogWarning(
+            "Final Success Audio Source not assigned!");
+            return;
+        }
+
+
+        if (finalSuccessSound == null)
+        {
+            Debug.LogWarning(
+            "Final Success Sound not assigned!");
+            return;
+        }
+
+
+        finalSuccessAudioSource.PlayOneShot(
+            finalSuccessSound,
+            finalSuccessSoundVolume
+        );
     }
 }
