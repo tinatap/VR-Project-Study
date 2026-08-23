@@ -1,42 +1,26 @@
 using UnityEngine;
 
-
 [System.Serializable]
 public class MazeDecoration
 {
     public string mazeName;
 
-    [Header("Points near walls")]
-    public Transform[] plantSpawnPoints;
-
-
-    [Header("Settings")]
-    [Range(0, 1)]
-    public float spawnChance = 0.3f;
-
-    public int maxPlants = 20;
+    [Header("Spawn Points Parent")]
+    public Transform spawnPointsParent;
 }
-
-
 
 public class DecorationManager : MonoBehaviour
 {
-
-    [Header("Plant Prefabs")]
-    public GameObject[] plantPrefabs;
-
+    [Header("Cactus Prefab")]
+    public GameObject cactusPrefab;
 
     [Header("Maze Decorations")]
     public MazeDecoration[] mazes;
-
-
 
     void Start()
     {
         GenerateDecorations();
     }
-
-
 
     void GenerateDecorations()
     {
@@ -46,41 +30,29 @@ public class DecorationManager : MonoBehaviour
         }
     }
 
-
-
     void SpawnForMaze(MazeDecoration maze)
     {
-
-        int count = 0;
-
-
-        foreach (Transform point in maze.plantSpawnPoints)
+        if (maze.spawnPointsParent == null)
         {
-
-            if (count >= maze.maxPlants)
-                break;
-
-
-            if (Random.value <= maze.spawnChance)
-            {
-
-                GameObject selectedPlant =
-                plantPrefabs[
-                Random.Range(0, plantPrefabs.Length)
-                ];
-
-
-                Instantiate(
-                    selectedPlant,
-                    point.position,
-                    point.rotation,
-                    transform
-                );
-
-
-                count++;
-            }
+            Debug.LogWarning($"Spawn Points Parent برای {maze.mazeName} تنظیم نشده است.");
+            return;
         }
 
+        if (cactusPrefab == null)
+        {
+            Debug.LogError("Cactus Prefab در DecorationManager قرار داده نشده است.");
+            return;
+        }
+
+        // تمام Childهای Parent را پیدا می‌کند
+        foreach (Transform point in maze.spawnPointsParent)
+        {
+            Instantiate(
+                cactusPrefab,
+                point.position,
+                point.rotation,
+                transform
+            );
+        }
     }
 }
