@@ -63,4 +63,12 @@ public class MusicManager : MonoBehaviour
         audioSource.Stop();
         audioSource.clip = null;
     }
+    public void StopBackgroundMusic()
+    {
+        if (audioSource != null)
+        {
+            audioSource.Stop();
+            audioSource.clip = null;
+        }
+    }
 }
