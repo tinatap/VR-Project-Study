@@ -2,6 +2,13 @@ using UnityEngine;
 
 public class Coin : MonoBehaviour
 {
+    [Header("Coin Collect Sound")]
+    public AudioClip collectSound;
+
+    [Range(0f, 1f)]
+    public float volume = 1f;
+
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
@@ -13,7 +20,24 @@ public class Coin : MonoBehaviour
             {
                 gm.CollectCoin();
 
-                // سکه حذف نمی‌شود؛ فقط غیرفعال می‌شود
+                // =========================================
+                // PLAY COLLECT SOUND
+                // =========================================
+
+                if (collectSound != null)
+                {
+                    AudioSource.PlayClipAtPoint(
+                        collectSound,
+                        transform.position,
+                        volume
+                    );
+                }
+
+
+                // =========================================
+                // DISABLE COIN
+                // =========================================
+
                 gameObject.SetActive(false);
             }
         }
