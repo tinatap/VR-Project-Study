@@ -23,6 +23,9 @@ public class GameManager : MonoBehaviour
     // ANALYTICS
     // =====================================================
 
+    [Header("TCP Analytics")]
+    public TCPAnalyticsClient tcpAnalyticsClient;
+
     [Header("Analytics")]
 
     public AnalyticsLogger analyticsLogger;
@@ -408,7 +411,77 @@ public class GameManager : MonoBehaviour
     // =====================================================
     // AWAKE
     // =====================================================
+    // =====================================================
+    // ANALYTICS PUBLIC DATA
+    // =====================================================
 
+    public int CurrentMaze
+    {
+        get
+        {
+            return currentMaze;
+        }
+    }
+
+    public int CurrentAttempt
+    {
+        get
+        {
+            if (currentMaze >= 0 &&
+                currentMaze < mazeAttemptCount.Length)
+            {
+                return mazeAttemptCount[currentMaze];
+            }
+
+            return 0;
+        }
+    }
+
+    public int CollectedCoins
+    {
+        get
+        {
+            return collectedCoins;
+        }
+    }
+
+    public int TotalCoins
+    {
+        get
+        {
+            return totalCoins;
+        }
+    }
+
+    public int TotalScore
+    {
+        get
+        {
+            return totalScore;
+        }
+    }
+
+    public float CurrentMazeElapsedTime
+    {
+        get
+        {
+            if (mazeStartTime <= 0f)
+                return 0f;
+
+            return Time.time - mazeStartTime;
+        }
+    }
+
+    public float TotalGameElapsedTime
+    {
+        get
+        {
+            if (gameStartTime <= 0f)
+                return 0f;
+
+            return Time.time - gameStartTime;
+        }
+    }
     private void Awake()
     {
         if (player != null)
@@ -498,6 +571,11 @@ public class GameManager : MonoBehaviour
             return;
 
         gameStartTime = Time.time;
+
+        if (tcpAnalyticsClient != null)
+        {
+            tcpAnalyticsClient.SendEvent("GAME_STARTED");
+        }
 
         currentMaze = 1;
 
@@ -634,6 +712,10 @@ public class GameManager : MonoBehaviour
             " started. Attempt: " +
             mazeAttemptCount[mazeNumber]
         );
+        if (tcpAnalyticsClient != null)
+        {
+            tcpAnalyticsClient.SendEvent("MAZE_STARTED");
+        }
     }
 
 
@@ -1159,6 +1241,11 @@ public class GameManager : MonoBehaviour
             "FAILED - TIME OVER"
         );
 
+        if (tcpAnalyticsClient != null)
+        {
+            tcpAnalyticsClient.SendEvent("MAZE_FAILED_TIME_OVER");
+        }
+
         totalScore = 0;
 
         collectedCoins = 0;
@@ -1378,6 +1465,10 @@ public class GameManager : MonoBehaviour
             "SUCCESS"
         );
 
+        if (tcpAnalyticsClient != null)
+        {
+            tcpAnalyticsClient.SendEvent("MAZE_SUCCESS");
+        }
         // =============================================
         // PLAY SUCCESS SOUND
         // =============================================
@@ -1565,6 +1656,13 @@ public class GameManager : MonoBehaviour
                     "SUCCESS - ALL MAZES COMPLETED",
                     Time.time - gameStartTime
                 );
+
+                if (tcpAnalyticsClient != null)
+                {
+                    tcpAnalyticsClient.SendEvent(
+                        "GAME_FINISHED_SUCCESS"
+                    );
+                }
             }
         }
 
@@ -1635,6 +1733,11 @@ public class GameManager : MonoBehaviour
             SaveCurrentMazeAttempt(
                 "FAILED - EXIT"
             );
+
+            if (tcpAnalyticsClient != null)
+            {
+                tcpAnalyticsClient.SendEvent("MAZE_EXIT");
+            }
         }
 
         float realTotalGameTime =
@@ -1749,6 +1852,13 @@ public class GameManager : MonoBehaviour
         );
 
         Time.timeScale = 0f;
+
+        if (tcpAnalyticsClient != null)
+        {
+            tcpAnalyticsClient.SendEvent(
+                "GAME_FINISHED_FAILED"
+            );
+        }
     }
 
     // =====================================================
@@ -1828,6 +1938,22 @@ public class GameManager : MonoBehaviour
         finalSuccessAudioSource.PlayOneShot(
             finalSuccessSound,
             finalSuccessSoundVolume
+        );
+    }
+    public void SetGameMode(bool useCoins)
+    {
+        if (useCoins)
+        {
+            scoreMode = ScoreMode.CoinsAndMazeScore;
+        }
+        else
+        {
+            scoreMode = ScoreMode.MazeScoreOnly;
+        }
+
+        Debug.Log(
+            "Game Mode changed. Use Coins = " +
+            useCoins
         );
     }
 }

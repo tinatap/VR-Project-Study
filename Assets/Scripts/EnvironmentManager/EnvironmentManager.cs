@@ -187,7 +187,7 @@ public class EnvironmentManager : MonoBehaviour
                 new bool[mazes.Length];
         }
 
-        ApplyEnvironment();
+       // ApplyEnvironment();
     }
 
 
@@ -976,5 +976,17 @@ public class EnvironmentManager : MonoBehaviour
         {
             mazeDecorationsSpawned[i] = false;
         }
+    }
+
+    public void SetEnvironment(EnvironmentType newEnvironment)
+    {
+        environmentType = newEnvironment;
+
+        ApplyEnvironment();
+
+        Debug.Log(
+            "Environment changed to: " +
+            newEnvironment
+        );
     }
 }
