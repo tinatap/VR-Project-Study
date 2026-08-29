@@ -13,29 +13,35 @@ public class TCPAnalyticsClient : MonoBehaviour
     // NETWORK
     // =====================================================
 
-    [Header("TCP Connection")]
+    [Header("Analytics TCP Connection")]
 
-    [Tooltip("IP address of the laptop/PC running Python receiver")]
+    [Tooltip("IP address of the laptop/PC running the Python server.")]
     public string pcIPAddress = "192.168.1.100";
 
-    [Tooltip("TCP port")]
-    public int port = 12345;
+    [Tooltip("TCP port used by the Python analytics server.")]
+    public int port = 5000;
 
-    [Tooltip("How often DATA is sent")]
+    [Tooltip("Automatically connect when the game starts.")]
+    public bool connectOnStart = true;
+
+    [Tooltip("How often continuous VR data is sent.")]
     public float sendInterval = 0.05f;
 
 
     // =====================================================
-    // REFERENCES
+    // PLAYER REFERENCES
     // =====================================================
 
     [Header("Player References")]
 
     public Transform player;
 
-    [Tooltip("Center Eye Anchor / Main Camera")]
     public Transform centerEyeAnchorTransform;
 
+
+    // =====================================================
+    // INPUT ACTIONS
+    // =====================================================
 
     [Header("Input Actions")]
 
@@ -48,27 +54,34 @@ public class TCPAnalyticsClient : MonoBehaviour
     public InputActionReference leftTriggerAction;
 
 
+    // =====================================================
+    // GAME MANAGER
+    // =====================================================
+
     [Header("Game Manager")]
 
     public GameManager gameManager;
 
 
     // =====================================================
-    // TCP
+    // TCP CONNECTION
     // =====================================================
 
     private TcpClient client;
 
-    private NetworkStream networkStream;
+    private NetworkStream stream;
 
-    private CancellationTokenSource cancellationTokenSource;
+    private bool isConnecting = false;
+
+    private bool shuttingDown = false;
+
+
+    // =====================================================
+    // SEND CONTROL
+    // =====================================================
 
     private SemaphoreSlim sendLock =
         new SemaphoreSlim(1, 1);
-
-    private bool connected = false;
-
-    private bool shuttingDown = false;
 
     private float sendTimer = 0f;
 
@@ -79,18 +92,32 @@ public class TCPAnalyticsClient : MonoBehaviour
 
     private async void Start()
     {
+        // -------------------------------------------------
+        // Find GameManager automatically
+        // -------------------------------------------------
+
         if (gameManager == null)
         {
             gameManager =
                 FindFirstObjectByType<GameManager>();
         }
 
+
+        // -------------------------------------------------
+        // Enable input actions
+        // -------------------------------------------------
+
         EnableInputs();
 
-        cancellationTokenSource =
-            new CancellationTokenSource();
 
-        await ConnectToPC();
+        // -------------------------------------------------
+        // Connect
+        // -------------------------------------------------
+
+        if (connectOnStart)
+        {
+            await ConnectToServer();
+        }
     }
 
 
@@ -135,51 +162,92 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
     // =====================================================
-    // CONNECT TO PC
+    // CONNECT
     // =====================================================
 
-    private async Task ConnectToPC()
+    public async Task ConnectToServer()
     {
+        if (isConnecting)
+            return;
+
+        if (IsConnected())
+            return;
+
+        if (shuttingDown)
+            return;
+
+        isConnecting = true;
+
         try
         {
             Debug.Log(
-                "Connecting to PC: " +
-                pcIPAddress +
-                ":" +
-                port
+                "=================================================="
             );
 
+            Debug.Log(
+                "TCPAnalyticsClient: Connecting..."
+            );
+
+            Debug.Log(
+                "IP: " + pcIPAddress
+            );
+
+            Debug.Log(
+                "Port: " + port
+            );
+
+
             client = new TcpClient();
+
 
             await client.ConnectAsync(
                 pcIPAddress,
                 port
             );
 
+
             if (shuttingDown)
                 return;
 
-            networkStream =
-                client.GetStream();
 
-            connected = true;
+            stream = client.GetStream();
+
 
             Debug.Log(
-                "TCP Analytics connected to PC."
+                "TCPAnalyticsClient: Connected successfully."
+            );
+
+            Debug.Log(
+                "=================================================="
             );
         }
         catch (Exception ex)
         {
-            connected = false;
+            Debug.LogError(
+                "TCPAnalyticsClient: Connection failed.\n" +
+                ex.Message
+            );
 
-            if (!shuttingDown)
-            {
-                Debug.LogError(
-                    "TCP connection failed: " +
-                    ex.Message
-                );
-            }
+            CloseConnection();
         }
+        finally
+        {
+            isConnecting = false;
+        }
+    }
+
+
+    // =====================================================
+    // CONNECTION STATUS
+    // =====================================================
+
+    public bool IsConnected()
+    {
+        return
+            client != null &&
+            client.Connected &&
+            stream != null &&
+            stream.CanWrite;
     }
 
 
@@ -189,19 +257,15 @@ public class TCPAnalyticsClient : MonoBehaviour
 
     private void Update()
     {
-        if (!connected)
-            return;
-
         if (shuttingDown)
             return;
 
-        if (networkStream == null)
+        if (!IsConnected())
             return;
 
-        if (!networkStream.CanWrite)
-            return;
 
         sendTimer += Time.deltaTime;
+
 
         if (sendTimer >= sendInterval)
         {
@@ -213,7 +277,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
     // =====================================================
-    // SEND CURRENT DATA
+    // CONTINUOUS DATA
     // =====================================================
 
     private async void SendCurrentData()
@@ -224,15 +288,17 @@ public class TCPAnalyticsClient : MonoBehaviour
         try
         {
             // =================================================
-            // TIME
+            // TIMESTAMP
             // =================================================
 
-            float timestamp =
-                Time.time;
+            string timestamp =
+                DateTime.Now.ToString(
+                    "yyyy-MM-dd HH:mm:ss.fff"
+                );
 
 
             // =================================================
-            // HEAD POSITION
+            // HEAD
             // =================================================
 
             Vector3 headPosition =
@@ -240,6 +306,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
             Vector3 headRotation =
                 Vector3.zero;
+
 
             if (centerEyeAnchorTransform != null)
             {
@@ -252,7 +319,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
             // =================================================
-            // PLAYER POSITION
+            // PLAYER
             // =================================================
 
             Vector3 playerPosition =
@@ -260,6 +327,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
             Vector3 playerRotation =
                 Vector3.zero;
+
 
             if (player != null)
             {
@@ -278,6 +346,7 @@ public class TCPAnalyticsClient : MonoBehaviour
             Vector2 rightThumbstick =
                 Vector2.zero;
 
+
             if (rightThumbstickAction != null)
             {
                 rightThumbstick =
@@ -292,6 +361,7 @@ public class TCPAnalyticsClient : MonoBehaviour
             // =================================================
 
             float rightTrigger = 0f;
+
 
             if (rightTriggerAction != null)
             {
@@ -309,6 +379,7 @@ public class TCPAnalyticsClient : MonoBehaviour
             Vector2 leftThumbstick =
                 Vector2.zero;
 
+
             if (leftThumbstickAction != null)
             {
                 leftThumbstick =
@@ -324,6 +395,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
             float leftTrigger = 0f;
 
+
             if (leftTriggerAction != null)
             {
                 leftTrigger =
@@ -334,7 +406,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
             // =================================================
-            // GAME MANAGER DATA
+            // GAME MANAGER
             // =================================================
 
             int mazeNumber = 0;
@@ -378,88 +450,99 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
             // =================================================
-            // CREATE DATA
+            // CREATE CONTINUOUS MESSAGE
             // =================================================
 
-            TCPMazeData data =
-                new TCPMazeData();
+            ContinuousAnalyticsTCPMessage message =
+                new ContinuousAnalyticsTCPMessage();
 
 
-            // =================================================
-            // GENERAL
-            // =================================================
+            message.messageType =
+                "CONTINUOUS_DATA";
 
-            data.timestamp =
+            message.timestamp =
                 timestamp;
 
-            data.eventType =
-                "DATA";
 
-            data.mazeNumber =
+            // =================================================
+            // GAME
+            // =================================================
+
+            message.mazeNumber =
                 mazeNumber;
 
-            data.attemptNumber =
+            message.attemptNumber =
                 attemptNumber;
 
-            data.collectedCoins =
+            message.collectedCoins =
                 collectedCoins;
 
-            data.totalCoins =
+            message.totalCoins =
                 totalCoins;
 
-            data.totalScore =
+            message.totalScore =
                 score;
 
-            data.mazeElapsedTime =
+            message.mazeElapsedTime =
                 mazeElapsedTime;
 
-            data.totalGameElapsedTime =
+            message.totalGameElapsedTime =
                 totalElapsedTime;
 
 
             // =================================================
-            // HEAD
+            // HEAD POSITION
             // =================================================
 
-            data.headPositionX =
+            message.headPositionX =
                 headPosition.x;
 
-            data.headPositionY =
+            message.headPositionY =
                 headPosition.y;
 
-            data.headPositionZ =
+            message.headPositionZ =
                 headPosition.z;
 
-            data.headRotationX =
+
+            // =================================================
+            // HEAD ROTATION
+            // =================================================
+
+            message.headRotationX =
                 ConvertRotation(
                     headRotation.x
                 );
 
-            data.headRotationY =
+            message.headRotationY =
                 ConvertRotation(
                     headRotation.y
                 );
 
-            data.headRotationZ =
+            message.headRotationZ =
                 ConvertRotation(
                     headRotation.z
                 );
 
 
             // =================================================
-            // PLAYER
+            // PLAYER POSITION
             // =================================================
 
-            data.playerPositionX =
+            message.playerPositionX =
                 playerPosition.x;
 
-            data.playerPositionY =
+            message.playerPositionY =
                 playerPosition.y;
 
-            data.playerPositionZ =
+            message.playerPositionZ =
                 playerPosition.z;
 
-            data.playerRotationY =
+
+            // =================================================
+            // PLAYER ROTATION
+            // =================================================
+
+            message.playerRotationY =
                 ConvertRotation(
                     playerRotation.y
                 );
@@ -469,13 +552,13 @@ public class TCPAnalyticsClient : MonoBehaviour
             // RIGHT CONTROLLER
             // =================================================
 
-            data.rightThumbstickX =
+            message.rightThumbstickX =
                 rightThumbstick.x;
 
-            data.rightThumbstickY =
+            message.rightThumbstickY =
                 rightThumbstick.y;
 
-            data.rightTrigger =
+            message.rightTrigger =
                 rightTrigger;
 
 
@@ -483,13 +566,13 @@ public class TCPAnalyticsClient : MonoBehaviour
             // LEFT CONTROLLER
             // =================================================
 
-            data.leftThumbstickX =
+            message.leftThumbstickX =
                 leftThumbstick.x;
 
-            data.leftThumbstickY =
+            message.leftThumbstickY =
                 leftThumbstick.y;
 
-            data.leftTrigger =
+            message.leftTrigger =
                 leftTrigger;
 
 
@@ -497,14 +580,15 @@ public class TCPAnalyticsClient : MonoBehaviour
             // SEND
             // =================================================
 
-            await SendData(data);
+            await SendMessage(message);
         }
         catch (Exception ex)
         {
             if (!shuttingDown)
             {
                 Debug.LogError(
-                    "TCP SendCurrentData Error: " +
+                    "TCPAnalyticsClient: " +
+                    "Continuous data error.\n" +
                     ex.Message
                 );
             }
@@ -513,7 +597,7 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
     // =====================================================
-    // SEND EVENT
+    // EVENT
     // =====================================================
 
     public async void SendEvent(string eventType)
@@ -524,225 +608,357 @@ public class TCPAnalyticsClient : MonoBehaviour
         if (string.IsNullOrEmpty(eventType))
             return;
 
-        try
-        {
-            TCPMazeData data =
-                new TCPMazeData();
+
+        AnalyticsTCPMessage message =
+            new AnalyticsTCPMessage();
 
 
-            // =================================================
-            // GENERAL
-            // =================================================
+        message.messageType =
+            "EVENT";
 
-            data.timestamp =
-                Time.time;
+        message.eventType =
+            eventType;
 
-            data.eventType =
-                eventType;
-
-
-            // =================================================
-            // GAME MANAGER
-            // =================================================
-
-            if (gameManager != null)
-            {
-                data.mazeNumber =
-                    gameManager.CurrentMaze;
-
-                data.attemptNumber =
-                    gameManager.CurrentAttempt;
-
-                data.collectedCoins =
-                    gameManager.CollectedCoins;
-
-                data.totalCoins =
-                    gameManager.TotalCoins;
-
-                data.totalScore =
-                    gameManager.TotalScore;
-
-                data.mazeElapsedTime =
-                    gameManager.CurrentMazeElapsedTime;
-
-                data.totalGameElapsedTime =
-                    gameManager.TotalGameElapsedTime;
-            }
-            else
-            {
-                data.mazeNumber = 0;
-
-                data.attemptNumber = 0;
-
-                data.collectedCoins = 0;
-
-                data.totalCoins = 0;
-
-                data.totalScore = 0;
-
-                data.mazeElapsedTime = 0f;
-
-                data.totalGameElapsedTime = 0f;
-            }
+        message.timestamp =
+            DateTime.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff"
+            );
 
 
-            // =================================================
-            // SEND
-            // =================================================
-
-            await SendData(data);
-        }
-        catch (Exception ex)
-        {
-            if (!shuttingDown)
-            {
-                Debug.LogError(
-                    "TCP SendEvent Error: " +
-                    ex.Message
-                );
-            }
-        }
+        await SendMessage(message);
     }
 
 
     // =====================================================
-    // COMMON SEND FUNCTION
+    // MAZE VISIT
     // =====================================================
 
-    private async Task SendData(
-        TCPMazeData data
+    public async void SendMazeVisitSummary(
+        MazeVisitRecord record
+    )
+    {
+        if (record == null)
+        {
+            Debug.LogWarning(
+                "TCPAnalyticsClient: " +
+                "MazeVisitRecord is null."
+            );
+
+            return;
+        }
+
+
+        MazeVisitTCPMessage message =
+            new MazeVisitTCPMessage();
+
+
+        message.messageType =
+            "MAZE_VISIT";
+
+
+        message.visitNumber =
+            record.visitNumber;
+
+        message.mazeNumber =
+            record.mazeNumber;
+
+        message.attemptNumber =
+            record.attemptNumber;
+
+
+        message.durationSeconds =
+            record.durationSeconds;
+
+        message.totalGameElapsedTime =
+            record.totalGameElapsedTime;
+
+
+        message.collectedCoins =
+            record.collectedCoins;
+
+        message.totalCoins =
+            record.totalCoins;
+
+
+        message.result =
+            record.result;
+
+
+        message.startRoomDuration =
+            record.startRoomDuration;
+
+        message.startQuestionPanelDuration =
+            record.startQuestionPanelDuration;
+
+
+        message.timestamp =
+            DateTime.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff"
+            );
+
+
+        await SendMessage(message);
+    }
+
+
+    // =====================================================
+    // EXIT CONFIRM
+    // =====================================================
+
+    public async void SendExitConfirmSummary(
+        ExitConfirmRecord record
+    )
+    {
+        if (record == null)
+        {
+            Debug.LogWarning(
+                "TCPAnalyticsClient: " +
+                "ExitConfirmRecord is null."
+            );
+
+            return;
+        }
+
+
+        ExitConfirmTCPMessage message =
+            new ExitConfirmTCPMessage();
+
+
+        message.messageType =
+            "EXIT_CONFIRM";
+
+
+        message.interactionNumber =
+            record.interactionNumber;
+
+        message.mazeNumber =
+            record.mazeNumber;
+
+        message.attemptNumber =
+            record.attemptNumber;
+
+
+        message.result =
+            record.result;
+
+
+        message.durationSeconds =
+            record.durationSeconds;
+
+
+        message.totalGameElapsedTime =
+            record.totalGameElapsedTime;
+
+
+        message.timestamp =
+            DateTime.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff"
+            );
+
+
+        await SendMessage(message);
+    }
+
+
+    // =====================================================
+    // START ROOM
+    // =====================================================
+
+    public async void SendStartRoomSummary(
+        float startRoomDuration,
+        float startQuestionPanelDuration
+    )
+    {
+        StartRoomTCPMessage message =
+            new StartRoomTCPMessage();
+
+
+        message.messageType =
+            "START_ROOM";
+
+
+        message.startRoomDuration =
+            startRoomDuration;
+
+        message.startQuestionPanelDuration =
+            startQuestionPanelDuration;
+
+
+        message.timestamp =
+            DateTime.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff"
+            );
+
+
+        await SendMessage(message);
+    }
+
+
+    // =====================================================
+    // FINAL RESULT
+    // =====================================================
+
+    public async void SendFinalResult(
+        string result,
+        float totalGameTime,
+        int finalScore
+    )
+    {
+        FinalResultTCPMessage message =
+            new FinalResultTCPMessage();
+
+
+        message.messageType =
+            "FINAL_RESULT";
+
+
+        message.result =
+            result;
+
+        message.totalGameTime =
+            totalGameTime;
+
+        message.finalScore =
+            finalScore;
+
+
+        message.timestamp =
+            DateTime.Now.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff"
+            );
+
+
+        await SendMessage(message);
+    }
+
+
+    // =====================================================
+    // GENERIC SEND
+    // =====================================================
+
+    private async Task SendMessage(
+        object messageObject
     )
     {
         if (shuttingDown)
             return;
 
-        if (!connected)
-            return;
-
-        if (networkStream == null)
-            return;
-
-        if (!networkStream.CanWrite)
-            return;
-
-
-        // =================================================
-        // LOCK
-        // =================================================
 
         bool lockTaken = false;
 
+
         try
         {
+            // -------------------------------------------------
+            // Connection
+            // -------------------------------------------------
+
+            if (!IsConnected())
+            {
+                Debug.LogWarning(
+                    "TCPAnalyticsClient: Not connected. " +
+                    "Trying to reconnect..."
+                );
+
+
+                await ConnectToServer();
+
+
+                if (!IsConnected())
+                {
+                    Debug.LogError(
+                        "TCPAnalyticsClient: " +
+                        "Unable to send message."
+                    );
+
+                    return;
+                }
+            }
+
+
+            // -------------------------------------------------
+            // Lock
+            // -------------------------------------------------
+
             await sendLock.WaitAsync();
 
             lockTaken = true;
 
 
-            // =================================================
-            // CHECK AGAIN AFTER WAITING
-            // =================================================
-
             if (shuttingDown)
                 return;
 
-            if (!connected)
-                return;
 
-            if (networkStream == null)
-                return;
-
-            if (!networkStream.CanWrite)
+            if (!IsConnected())
                 return;
 
 
-            // =================================================
+            // -------------------------------------------------
             // JSON
-            // =================================================
+            // -------------------------------------------------
 
             string json =
                 JsonConvert.SerializeObject(
+                    messageObject
+                );
+
+
+            // -------------------------------------------------
+            // Newline delimiter
+            // -------------------------------------------------
+
+            string data =
+                json + "\n";
+
+
+            byte[] bytes =
+                Encoding.UTF8.GetBytes(
                     data
                 );
 
 
-            byte[] jsonBytes =
-                Encoding.UTF8.GetBytes(
-                    json
-                );
+            // -------------------------------------------------
+            // Send
+            // -------------------------------------------------
 
-
-            // =================================================
-            // LENGTH PREFIX
-            // =================================================
-
-            byte[] lengthPrefix =
-                BitConverter.GetBytes(
-                    jsonBytes.Length
-                );
-
-
-            // Unity/C# معمولاً Little Endian است.
-            // Python ما Big Endian می‌خواند.
-            // بنابراین Reverse می‌کنیم.
-
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(
-                    lengthPrefix
-                );
-            }
-
-
-            // =================================================
-            // SEND LENGTH
-            // =================================================
-
-            await networkStream.WriteAsync(
-                lengthPrefix,
+            await stream.WriteAsync(
+                bytes,
                 0,
-                lengthPrefix.Length
+                bytes.Length
             );
 
 
-            // =================================================
-            // SEND JSON
-            // =================================================
+            await stream.FlushAsync();
 
-            await networkStream.WriteAsync(
-                jsonBytes,
-                0,
-                jsonBytes.Length
+
+            Debug.Log(
+                "TCP ANALYTICS SENT:\n" +
+                json
             );
-
-
-            // =================================================
-            // FLUSH
-            // =================================================
-
-            await networkStream.FlushAsync();
         }
         catch (ObjectDisposedException)
         {
             if (!shuttingDown)
             {
-                connected = false;
-
                 Debug.LogWarning(
-                    "TCP NetworkStream was disposed."
+                    "TCPAnalyticsClient: " +
+                    "Network stream disposed."
                 );
+
+                CloseConnection();
             }
         }
         catch (Exception ex)
         {
             if (!shuttingDown)
             {
-                connected = false;
-
                 Debug.LogError(
-                    "TCP SendData Error: " +
+                    "TCPAnalyticsClient: " +
+                    "Send failed.\n" +
                     ex.Message
                 );
+
+                CloseConnection();
             }
         }
         finally
@@ -770,163 +986,230 @@ public class TCPAnalyticsClient : MonoBehaviour
 
 
     // =====================================================
-    // CLEANUP
+    // CLOSE
     // =====================================================
 
-    private void OnDestroy()
+    public void CloseConnection()
     {
-        shuttingDown = true;
-
-        connected = false;
-
-        DisableInputs();
-
-
-        // =================================================
-        // CANCEL
-        // =================================================
-
         try
         {
-            cancellationTokenSource?.Cancel();
-        }
-        catch
-        {
-        }
-
-
-        // =================================================
-        // CLOSE STREAM
-        // =================================================
-
-        try
-        {
-            if (networkStream != null)
+            if (stream != null)
             {
-                networkStream.Close();
-                networkStream = null;
+                stream.Close();
+                stream = null;
             }
-        }
-        catch
-        {
-        }
 
 
-        // =================================================
-        // CLOSE CLIENT
-        // =================================================
-
-        try
-        {
             if (client != null)
             {
                 client.Close();
                 client = null;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.LogWarning(
+                "TCPAnalyticsClient: " +
+                "Error closing connection.\n" +
+                ex.Message
+            );
         }
+    }
 
 
-        // =================================================
-        // DISPOSE
-        // =================================================
+    // =====================================================
+    // APPLICATION QUIT
+    // =====================================================
+
+    private void OnApplicationQuit()
+    {
+        shuttingDown = true;
+
+        DisableInputs();
+
+        CloseConnection();
+
 
         try
         {
-            cancellationTokenSource?.Dispose();
+            sendLock?.Dispose();
         }
         catch
         {
         }
     }
+
+
+    // =====================================================
+    // DESTROY
+    // =====================================================
+
+    private void OnDestroy()
+    {
+        shuttingDown = true;
+
+        DisableInputs();
+
+        CloseConnection();
+    }
 }
 
 
 // =========================================================
-// TCP DATA CLASS
+// CONTINUOUS ANALYTICS MESSAGE
 // =========================================================
 
 [Serializable]
-public class TCPMazeData
+public class ContinuousAnalyticsTCPMessage
 {
-    // =====================================================
-    // GENERAL
-    // =====================================================
+    public string messageType;
+    public string timestamp;
 
-    public float timestamp;
-
-    public string eventType;
-
-
-    // =====================================================
     // GAME
-    // =====================================================
 
     public int mazeNumber;
-
     public int attemptNumber;
 
     public int collectedCoins;
-
     public int totalCoins;
-
     public int totalScore;
 
     public float mazeElapsedTime;
-
     public float totalGameElapsedTime;
 
-
-    // =====================================================
-    // HEAD
-    // =====================================================
+    // HEAD POSITION
 
     public float headPositionX;
-
     public float headPositionY;
-
     public float headPositionZ;
 
+    // HEAD ROTATION
+
     public float headRotationX;
-
     public float headRotationY;
-
     public float headRotationZ;
 
-
-    // =====================================================
-    // PLAYER
-    // =====================================================
+    // PLAYER POSITION
 
     public float playerPositionX;
-
     public float playerPositionY;
-
     public float playerPositionZ;
+
+    // PLAYER ROTATION
 
     public float playerRotationY;
 
-
-    // =====================================================
     // RIGHT CONTROLLER
-    // =====================================================
 
     public float rightThumbstickX;
-
     public float rightThumbstickY;
-
     public float rightTrigger;
 
-
-    // =====================================================
     // LEFT CONTROLLER
-    // =====================================================
 
     public float leftThumbstickX;
-
     public float leftThumbstickY;
-
     public float leftTrigger;
+}
+
+
+// =========================================================
+// EVENT MESSAGE
+// =========================================================
+
+[Serializable]
+public class AnalyticsTCPMessage
+{
+    public string messageType;
+    public string eventType;
+    public string timestamp;
+}
+
+
+// =========================================================
+// MAZE VISIT MESSAGE
+// =========================================================
+
+[Serializable]
+public class MazeVisitTCPMessage
+{
+    public string messageType;
+
+    public int visitNumber;
+
+    public int mazeNumber;
+    public int attemptNumber;
+
+    public float durationSeconds;
+    public float totalGameElapsedTime;
+
+    public int collectedCoins;
+    public int totalCoins;
+
+    public string result;
+
+    public float startRoomDuration;
+    public float startQuestionPanelDuration;
+
+    public string timestamp;
+}
+
+
+// =========================================================
+// EXIT CONFIRM MESSAGE
+// =========================================================
+
+[Serializable]
+public class ExitConfirmTCPMessage
+{
+    public string messageType;
+
+    public int interactionNumber;
+
+    public int mazeNumber;
+    public int attemptNumber;
+
+    public string result;
+
+    public float durationSeconds;
+
+    public float totalGameElapsedTime;
+
+    public string timestamp;
+}
+
+
+// =========================================================
+// START ROOM MESSAGE
+// =========================================================
+
+[Serializable]
+public class StartRoomTCPMessage
+{
+    public string messageType;
+
+    public float startRoomDuration;
+
+    public float startQuestionPanelDuration;
+
+    public string timestamp;
+}
+
+
+// =========================================================
+// FINAL RESULT MESSAGE
+// =========================================================
+
+[Serializable]
+public class FinalResultTCPMessage
+{
+    public string messageType;
+
+    public string result;
+
+    public float totalGameTime;
+
+    public int finalScore;
+
+    public string timestamp;
 }

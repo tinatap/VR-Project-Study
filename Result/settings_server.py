@@ -16,9 +16,10 @@ PORT = 12346
 # =========================================================
 
 settings = {
-    "environment": "Galaxy",
+    "environment": "Neutral",
     "music": "Calm",
-    "gameMode": "CoinsAndMazeScore"
+    "gameMode": "CoinsAndMazeScore",
+    "avatar": "Female"
 }
 
 
@@ -115,14 +116,12 @@ while True:
 
         print("Settings sent successfully.")
 
-
     except Exception as e:
 
         print(
             "Error sending settings:",
             e
         )
-
 
     finally:
 

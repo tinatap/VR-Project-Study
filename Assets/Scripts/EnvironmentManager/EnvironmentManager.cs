@@ -187,7 +187,7 @@ public class EnvironmentManager : MonoBehaviour
                 new bool[mazes.Length];
         }
 
-       // ApplyEnvironment();
+        ApplyEnvironment();
     }
 
 

@@ -1,0 +1,9 @@
+{"messageType": "EVENT", "eventType": "START_ROOM_YES", "timestamp": "2026-08-25 17:30:18.804"}
+{"messageType": "EVENT", "eventType": "GAME_STARTED", "timestamp": "2026-08-25 17:30:18.805"}
+{"messageType": "EVENT", "eventType": "MAZE_STARTED", "timestamp": "2026-08-25 17:30:18.808"}
+{"messageType": "EVENT", "eventType": "MAZE_SUCCESS", "timestamp": "2026-08-25 17:30:42.510"}
+{"messageType": "EVENT", "eventType": "PANEL_OPENED_SUCCESS", "timestamp": "2026-08-25 17:30:42.524"}
+{"messageType": "EVENT", "eventType": "MAZE_STARTED", "timestamp": "2026-08-25 17:30:52.513"}
+{"messageType": "EVENT", "eventType": "MAZE_EXIT", "timestamp": "2026-08-25 17:30:59.637"}
+{"messageType": "EVENT", "eventType": "PANEL_OPENED_FINAL_GAME", "timestamp": "2026-08-25 17:30:59.659"}
+{"messageType": "EVENT", "eventType": "GAME_FINISHED_FAILED", "timestamp": "2026-08-25 17:30:59.668"}

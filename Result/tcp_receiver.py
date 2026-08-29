@@ -1,331 +1,469 @@
 import socket
-import struct
 import json
-import csv
 import os
 from datetime import datetime
 
 
+# ============================================================
+# SERVER SETTINGS
+# ============================================================
+
 HOST = "0.0.0.0"
 PORT = 12345
 
-OUTPUT_FOLDER = "MazeData"
+# پوشه ذخیره اطلاعات
+DATA_FOLDER = "analytics_data"
 
-os.makedirs(
-    OUTPUT_FOLDER,
-    exist_ok=True
+os.makedirs(DATA_FOLDER, exist_ok=True)
+
+
+# ============================================================
+# FILE PATHS
+# ============================================================
+
+CONTINUOUS_FILE = os.path.join(
+    DATA_FOLDER,
+    "continuous_data.jsonl"
+)
+
+EVENT_FILE = os.path.join(
+    DATA_FOLDER,
+    "events.jsonl"
+)
+
+MAZE_VISIT_FILE = os.path.join(
+    DATA_FOLDER,
+    "maze_visits.jsonl"
+)
+
+EXIT_CONFIRM_FILE = os.path.join(
+    DATA_FOLDER,
+    "exit_confirm.jsonl"
+)
+
+START_ROOM_FILE = os.path.join(
+    DATA_FOLDER,
+    "start_room.jsonl"
+)
+
+FINAL_RESULT_FILE = os.path.join(
+    DATA_FOLDER,
+    "final_result.jsonl"
 )
 
 
-# =====================================================
-# CREATE FILE
-# =====================================================
+# ============================================================
+# SAVE JSON
+# ============================================================
 
-timestamp = datetime.now().strftime(
-    "%Y%m%d_%H%M%S"
-)
+def save_json_line(filename, data):
+    """
+    هر پیام را به صورت یک JSON جداگانه در فایل ذخیره می‌کند.
+    """
 
-csv_file_path = os.path.join(
-    OUTPUT_FOLDER,
-    f"MazeData_{timestamp}.csv"
-)
+    with open(
+        filename,
+        "a",
+        encoding="utf-8"
+    ) as file:
 
-
-# =====================================================
-# CSV COLUMNS
-# =====================================================
-
-FIELDS = [
-    "timestamp",
-    "eventType",
-
-    "mazeNumber",
-    "attemptNumber",
-
-    "collectedCoins",
-    "totalCoins",
-    "totalScore",
-
-    "mazeElapsedTime",
-    "totalGameElapsedTime",
-
-    "headPositionX",
-    "headPositionY",
-    "headPositionZ",
-
-    "headRotationX",
-    "headRotationY",
-    "headRotationZ",
-
-    "playerPositionX",
-    "playerPositionY",
-    "playerPositionZ",
-
-    "playerRotationY",
-
-    "rightThumbstickX",
-    "rightThumbstickY",
-
-    "rightTrigger",
-
-    "leftThumbstickX",
-    "leftThumbstickY",
-
-    "leftTrigger"
-]
-
-
-# =====================================================
-# RECEIVE EXACT NUMBER OF BYTES
-# =====================================================
-
-def recv_exact(sock, size):
-
-    data = b""
-
-    while len(data) < size:
-
-        chunk = sock.recv(
-            size - len(data)
+        json.dump(
+            data,
+            file,
+            ensure_ascii=False
         )
 
-        if not chunk:
-            return None
-
-        data += chunk
-
-    return data
+        file.write("\n")
 
 
-# =====================================================
-# START SERVER
-# =====================================================
+# ============================================================
+# PROCESS MESSAGE
+# ============================================================
 
-server = socket.socket(
-    socket.AF_INET,
-    socket.SOCK_STREAM
-)
+def process_message(data):
+    """
+    پیام دریافت شده از Unity را بر اساس messageType
+    در فایل مناسب ذخیره می‌کند.
+    """
 
-server.setsockopt(
-    socket.SOL_SOCKET,
-    socket.SO_REUSEADDR,
-    1
-)
-
-server.bind(
-    (HOST, PORT)
-)
-
-server.listen(1)
+    if not isinstance(data, dict):
+        print("Invalid message format.")
+        return
 
 
-print("======================================")
-print("Maze TCP Receiver")
-print(f"Listening on port {PORT}")
-print(f"Saving to: {csv_file_path}")
-print("Waiting for Quest...")
-print("======================================")
-
-
-# =====================================================
-# OPEN CSV
-# =====================================================
-
-with open(
-    csv_file_path,
-    "w",
-    newline="",
-    encoding="utf-8-sig"
-) as csv_file:
-
-    writer = csv.DictWriter(
-        csv_file,
-        fieldnames=FIELDS
+    message_type = data.get(
+        "messageType",
+        "UNKNOWN"
     )
 
-    writer.writeheader()
 
+    # ========================================================
+    # CONTINUOUS DATA
+    # ========================================================
 
-    # =================================================
-    # WAIT FOR QUEST
-    # =================================================
+    if message_type == "CONTINUOUS_DATA":
 
-    while True:
-
-        client, address = server.accept()
-
-        print(
-            f"Quest connected from {address}"
+        save_json_line(
+            CONTINUOUS_FILE,
+            data
         )
 
-        try:
+        print(
+            "[CONTINUOUS_DATA] "
+            f"Maze={data.get('mazeNumber')} "
+            f"Attempt={data.get('attemptNumber')}"
+        )
 
-            while True:
+        return
 
-                # =====================================
-                # READ LENGTH
-                # =====================================
 
-                length_data = recv_exact(
-                    client,
-                    4
+    # ========================================================
+    # EVENT
+    # ========================================================
+
+    if message_type == "EVENT":
+
+        save_json_line(
+            EVENT_FILE,
+            data
+        )
+
+        print(
+            "[EVENT] "
+            f"{data.get('eventType')}"
+        )
+
+        return
+
+
+    # ========================================================
+    # MAZE VISIT
+    # ========================================================
+
+    if message_type == "MAZE_VISIT":
+
+        save_json_line(
+            MAZE_VISIT_FILE,
+            data
+        )
+
+        print(
+            "[MAZE_VISIT] "
+            f"Visit={data.get('visitNumber')} "
+            f"Maze={data.get('mazeNumber')} "
+            f"Attempt={data.get('attemptNumber')} "
+            f"Result={data.get('result')} "
+            f"Duration={data.get('durationSeconds')}"
+        )
+
+        return
+
+
+    # ========================================================
+    # EXIT CONFIRM
+    # ========================================================
+
+    if message_type == "EXIT_CONFIRM":
+
+        save_json_line(
+            EXIT_CONFIRM_FILE,
+            data
+        )
+
+        print(
+            "[EXIT_CONFIRM] "
+            f"Interaction={data.get('interactionNumber')} "
+            f"Maze={data.get('mazeNumber')} "
+            f"Attempt={data.get('attemptNumber')} "
+            f"Result={data.get('result')} "
+            f"Duration={data.get('durationSeconds')}"
+        )
+
+        return
+
+
+    # ========================================================
+    # START ROOM
+    # ========================================================
+
+    if message_type == "START_ROOM":
+
+        save_json_line(
+            START_ROOM_FILE,
+            data
+        )
+
+        print(
+            "[START_ROOM] "
+            f"RoomDuration={data.get('startRoomDuration')} "
+            f"QuestionDuration={data.get('startQuestionPanelDuration')}"
+        )
+
+        return
+
+
+    # ========================================================
+    # FINAL RESULT
+    # ========================================================
+
+    if message_type == "FINAL_RESULT":
+
+        save_json_line(
+            FINAL_RESULT_FILE,
+            data
+        )
+
+        print(
+            "[FINAL_RESULT] "
+            f"Result={data.get('result')} "
+            f"TotalTime={data.get('totalGameTime')} "
+            f"FinalScore={data.get('finalScore')}"
+        )
+
+        return
+
+
+    # ========================================================
+    # UNKNOWN
+    # ========================================================
+
+    print(
+        "[UNKNOWN MESSAGE TYPE]",
+        message_type
+    )
+
+
+# ============================================================
+# HANDLE CLIENT
+# ============================================================
+
+def handle_client(conn, address):
+
+    print()
+    print("==================================================")
+    print("Unity client connected")
+    print("Address:", address)
+    print("==================================================")
+
+    # --------------------------------------------------------
+    # TCP buffer
+    # --------------------------------------------------------
+
+    buffer = ""
+
+    try:
+
+        while True:
+
+            # ------------------------------------------------
+            # Receive bytes
+            # ------------------------------------------------
+
+            received = conn.recv(65536)
+
+            if not received:
+                print(
+                    "Unity client disconnected."
                 )
 
-                if length_data is None:
-
-                    print(
-                        "Quest disconnected."
-                    )
-
-                    break
+                break
 
 
-                message_length = struct.unpack(
-                    ">I",
-                    length_data
-                )[0]
+            # ------------------------------------------------
+            # Decode
+            # ------------------------------------------------
+
+            buffer += received.decode(
+                "utf-8"
+            )
 
 
-                # =====================================
-                # SAFETY CHECK
-                # =====================================
+            # ------------------------------------------------
+            # Process complete messages
+            #
+            # Unity sends:
+            #
+            # { ... }\n
+            #
+            # ------------------------------------------------
 
-                if message_length <= 0:
+            while "\n" in buffer:
 
-                    print(
-                        "Invalid message length:",
-                        message_length
-                    )
+                line, buffer = buffer.split(
+                    "\n",
+                    1
+                )
 
+                line = line.strip()
+
+                if not line:
                     continue
 
 
-                if message_length > 10 * 1024 * 1024:
-
-                    print(
-                        "Message too large:",
-                        message_length
-                    )
-
-                    break
-
-
-                # =====================================
-                # READ JSON
-                # =====================================
-
-                json_data = recv_exact(
-                    client,
-                    message_length
-                )
-
-                if json_data is None:
-
-                    print(
-                        "Connection closed."
-                    )
-
-                    break
-
-
-                # =====================================
-                # DECODE JSON
-                # =====================================
+                # ------------------------------------------------
+                # Parse JSON
+                # ------------------------------------------------
 
                 try:
 
-                    text = json_data.decode(
-                        "utf-8"
-                    )
-
                     data = json.loads(
-                        text
+                        line
                     )
 
-                except Exception as e:
+                except json.JSONDecodeError as error:
 
                     print(
-                        "JSON error:",
-                        e
+                        "JSON decode error:"
                     )
 
+                    print(error)
+
                     print(
-                        "Raw data:",
-                        repr(json_data[:200])
+                        "Received data:",
+                        line
                     )
 
                     continue
 
 
-                # =====================================
-                # PRINT RECEIVED DATA
-                # =====================================
+                # ------------------------------------------------
+                # Process
+                # ------------------------------------------------
 
-                print(
-                    "RECEIVED -> "
-                    "Maze:",
-                    data.get("mazeNumber"),
-                    "| Attempt:",
-                    data.get("attemptNumber"),
-                    "| Coins:",
-                    data.get("collectedCoins"),
-                    "| Score:",
-                    data.get("totalScore"),
-                    "| Event:",
-                    data.get("eventType")
+                process_message(
+                    data
                 )
 
 
-                # =====================================
-                # SAVE CSV
-                # =====================================
+    except ConnectionResetError:
 
-                row = {}
+        print(
+            "Unity connection was reset."
+        )
 
-                for field in FIELDS:
+    except Exception as error:
 
-                    row[field] = data.get(
-                        field,
-                        ""
-                    )
+        print(
+            "Client error:",
+            error
+        )
 
-                writer.writerow(row)
+    finally:
 
-                csv_file.flush()
+        try:
+            conn.close()
+        except:
+            pass
 
-
-                # =====================================
-                # IMPORTANT EVENTS
-                # =====================================
-
-                event = data.get(
-                    "eventType",
-                    ""
-                )
-
-                if event != "DATA":
-
-                    print(
-                        "EVENT:",
-                        event,
-                        "| Maze:",
-                        data.get(
-                            "mazeNumber"
-                        ),
-                        "| Attempt:",
-                        data.get(
-                            "attemptNumber"
-                        )
-                    )
+        print(
+            "Connection closed:",
+            address
+        )
 
 
-        except Exception as e:
+# ============================================================
+# START SERVER
+# ============================================================
 
-            print(
-                "Connection error:",
-                e
+def start_server():
+
+    print()
+    print("==================================================")
+    print("      UNITY TCP ANALYTICS SERVER")
+    print("==================================================")
+
+    print(
+        "Listening on:",
+        HOST,
+        PORT
+    )
+
+    print(
+        "Data folder:",
+        DATA_FOLDER
+    )
+
+    print("==================================================")
+    print()
+
+
+    # --------------------------------------------------------
+    # Create TCP socket
+    # --------------------------------------------------------
+
+    server = socket.socket(
+        socket.AF_INET,
+        socket.SOCK_STREAM
+    )
+
+
+    # --------------------------------------------------------
+    # Allow address reuse
+    # --------------------------------------------------------
+
+    server.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_REUSEADDR,
+        1
+    )
+
+
+    # --------------------------------------------------------
+    # Bind
+    # --------------------------------------------------------
+
+    server.bind(
+        (HOST, PORT)
+    )
+
+
+    # --------------------------------------------------------
+    # Listen
+    # --------------------------------------------------------
+
+    server.listen(5)
+
+
+    print(
+        "Server started successfully."
+    )
+
+    print(
+        "Waiting for Unity connection..."
+    )
+
+    print()
+
+
+    try:
+
+        while True:
+
+            conn, address = server.accept()
+
+            handle_client(
+                conn,
+                address
             )
 
-        finally:
 
-            client.close()
+    except KeyboardInterrupt:
+
+        print()
+        print(
+            "Server stopped."
+        )
+
+
+    finally:
+
+        server.close()
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+if __name__ == "__main__":
+
+    start_server()
