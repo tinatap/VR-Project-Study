@@ -1,3 +1,4 @@
+
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -149,10 +150,10 @@ public class StartGameMenuController : MonoBehaviour
 
     private void OnDisable()
     {
-        // Input Actionها را اینجا Disable نمی‌کنیم.
-        //
-        // چون ExitMenuController از همان Trigger
-        // و Thumbstick استفاده می‌کند.
+        // Input Actionها را اینجا Disable نمی‌کنیم. 
+        // 
+        // چون ExitMenuController از همان Trigger 
+        // و Thumbstick استفاده می‌کند. 
     }
 
 
@@ -442,13 +443,14 @@ public class StartGameMenuController : MonoBehaviour
 
 
         // ================================================= 
-        // REGISTER PANEL OPEN TIME IN GAME MANAGER
+        // TCP EVENT 
         // ================================================= 
 
-        if (gameManager != null)
-        {
-            gameManager.OpenStartQuestionPanel();
-        }
+        SendTCPEvent(
+            "PANEL_OPENED_START_QUESTION",
+            "PANEL_EVENT",
+            "Start Question Panel opened."
+        );
 
 
         Debug.Log(
@@ -547,20 +549,20 @@ public class StartGameMenuController : MonoBehaviour
 
 
         // ================================================= 
-        // REGISTER YES IMMEDIATELY
+        // IMPORTANT 
         // ================================================= 
-        //
-        // اینجا YES ثبت می‌شود؛ یعنی دقیقاً زمانی که
-        // بازیکن YES را تأیید می‌کند.
-        //
-        // بنابراین زمان Start Room و Start Question Panel
-        // قبل از شروع Transfer ثبت می‌شوند.
+        // 
+        // START_ROOM_YES 
+        // و 
+        // PANEL_CLOSED_START_QUESTION 
+        // 
+        // اینجا ارسال نمی‌شوند. 
+        // 
+        // چون GameManager.StartGameFromMaze1() 
+        // خودش این دو Event را ارسال می‌کند. 
+        // 
+        // این کار از Duplicate Event جلوگیری می‌کند. 
         // ================================================= 
-
-        if (gameManager != null)
-        {
-            gameManager.RegisterStartRoomYes();
-        }
 
 
         // ================================================= 
@@ -572,21 +574,6 @@ public class StartGameMenuController : MonoBehaviour
 
         if (startPanel != null)
             startPanel.SetActive(false);
-
-
-        // ================================================= 
-        // PANEL CLOSED EVENT
-        // ================================================= 
-        //
-        // چون پنل همینجا بعد از YES بسته می‌شود،
-        // Event بسته شدن هم همینجا ثبت می‌شود.
-        // ================================================= 
-
-        SendTCPEvent(
-            "PANEL_CLOSED_START_QUESTION",
-            "PANEL_EVENT",
-            "Start Question Panel closed after YES."
-        );
 
 
         // ================================================= 
@@ -652,7 +639,7 @@ public class StartGameMenuController : MonoBehaviour
 
     // ===================================================== 
     // TRANSFER TO MAZE 
-    // ================================================= 
+    // ===================================================== 
 
     private IEnumerator TransferToMaze()
     {
@@ -778,12 +765,20 @@ public class StartGameMenuController : MonoBehaviour
         if (gameManager != null)
         {
             // ================================================= 
-            // GameManager از اینجا به بعد مسئول شروع بازی است.
-            //
-            // START_ROOM_YES قبلاً ثبت شده.
-            //
-            // اینجا GAME_STARTED و MAZE_STARTED
-            // طبق منطق GameManager ثبت می‌شوند.
+            // IMPORTANT 
+            // ================================================= 
+            // 
+            // GameManager از اینجا به بعد مسئول: 
+            // 
+            // START_ROOM_YES 
+            // PANEL_CLOSED_START_QUESTION 
+            // GAME_STARTED 
+            // MAZE_STARTED 
+            // 
+            // است. 
+            // 
+            // بنابراین این Eventها را اینجا دوباره 
+            // ارسال نمی‌کنیم. 
             // ================================================= 
 
             gameManager.StartGameFromMaze1();
@@ -832,9 +827,10 @@ public class StartGameMenuController : MonoBehaviour
         // IMPORTANT 
         // ================================================= 
         // 
-        // Maze UI را اینجا فعال نمی‌کنیم.
-        // GameManager.StartGameFromMaze1()
-        // خودش آن را کنترل می‌کند.
+        // Maze UI را اینجا فعال نمی‌کنیم. 
+        // 
+        // GameManager.StartGameFromMaze1() 
+        // خودش SetMazeUI(true) را اجرا می‌کند. 
         // ================================================= 
 
 
@@ -926,3 +922,4 @@ public class StartGameMenuController : MonoBehaviour
         );
     }
 }
+

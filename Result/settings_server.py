@@ -16,10 +16,10 @@ PORT = 12346
 # =========================================================
 
 settings = {
-    "environment": "Neutral",
+    "environment": "Galaxy",
     "music": "Calm",
     "gameMode": "CoinsAndMazeScore",
-    "avatar": "Female"
+    "avatar": "Male"
 }
 
 

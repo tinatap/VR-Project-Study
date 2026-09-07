@@ -1,0 +1,361 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+using StarterAssets;
+
+public class StartRoomAvatarInspect : MonoBehaviour
+{
+    // =====================================================
+    // REFERENCES
+    // =====================================================
+
+    [Header("References")]
+
+    public Transform avatar;
+
+    public Transform xrOrigin;
+
+    public VRThirdPersonController avatarController;
+
+
+    // =====================================================
+    // START ROOM
+    // =====================================================
+
+    [Header("Start Room Control")]
+
+    public GameObject startRoom;
+
+
+    // =====================================================
+    // INPUT
+    // =====================================================
+
+    [Header("Input")]
+
+    [Tooltip("Right Grip Button")]
+    public InputActionReference rightGripAction;
+
+
+    // =====================================================
+    // CAMERA ORBIT
+    // =====================================================
+
+    [Header("Camera Orbit")]
+
+    [Tooltip("Distance from Avatar")]
+    public float orbitDistance = 3f;
+
+    [Tooltip("Height of Camera")]
+    public float orbitHeight = 1.5f;
+
+    [Tooltip("Automatic rotation speed")]
+    public float orbitSpeed = 30f;
+
+
+    // =====================================================
+    // PRIVATE
+    // =====================================================
+
+    private bool inspecting = false;
+
+    private bool gripHeld = false;
+
+    private float currentAngle;
+
+
+    // =====================================================
+    // ENABLE
+    // =====================================================
+
+    private void OnEnable()
+    {
+        if (rightGripAction != null)
+            rightGripAction.action.Enable();
+    }
+
+
+    // =====================================================
+    // DISABLE
+    // =====================================================
+
+    private void OnDisable()
+    {
+        if (rightGripAction != null)
+            rightGripAction.action.Disable();
+    }
+
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
+
+    private void Update()
+    {
+        // =================================================
+        // فقط در Start Room
+        // =================================================
+
+        if (startRoom == null ||
+            !startRoom.activeInHierarchy)
+        {
+            return;
+        }
+
+
+        if (rightGripAction == null)
+            return;
+
+
+        // =================================================
+        // خواندن Grip
+        // =================================================
+
+        float grip =
+            rightGripAction.action.ReadValue<float>();
+
+
+        bool newGripHeld =
+            grip > 0.1f;
+
+
+        // =================================================
+        // Grip Press
+        // =================================================
+
+        if (newGripHeld && !gripHeld)
+        {
+            gripHeld = true;
+
+            StartInspect();
+        }
+
+
+        // =================================================
+        // Grip Hold
+        // =================================================
+
+        if (gripHeld)
+        {
+            if (newGripHeld)
+            {
+                RotateCameraAroundAvatar();
+            }
+            else
+            {
+                // Grip رها شده
+                gripHeld = false;
+
+                ExitInspect();
+            }
+        }
+    }
+
+
+    // =====================================================
+    // START INSPECT
+    // =====================================================
+
+    private void StartInspect()
+    {
+        if (avatar == null ||
+            xrOrigin == null)
+            return;
+
+
+        inspecting = true;
+
+
+        // =================================================
+        // قفل Avatar
+        // =================================================
+
+        if (avatarController != null)
+        {
+            avatarController.SetMovementLocked(true);
+
+            // جلوگیری از اینکه Controller
+            // XR Origin را پشت Avatar ببرد
+            avatarController.allowCameraFollow = false;
+        }
+
+
+        // =================================================
+        // محاسبه زاویه فعلی دوربین
+        // از موقعیت فعلی XR Origin
+        // =================================================
+
+        Vector3 direction =
+            xrOrigin.position -
+            avatar.position;
+
+
+        direction.y = 0f;
+
+
+        if (direction.sqrMagnitude > 0.001f)
+        {
+            currentAngle =
+                Mathf.Atan2(
+                    direction.x,
+                    direction.z
+                ) *
+                Mathf.Rad2Deg;
+        }
+    }
+
+
+    // =====================================================
+    // CAMERA ROTATION
+    // =====================================================
+
+    private void RotateCameraAroundAvatar()
+    {
+        if (!inspecting)
+            return;
+
+
+        if (avatar == null ||
+            xrOrigin == null)
+            return;
+
+
+        // =================================================
+        // چرخش خودکار
+        // =================================================
+
+        currentAngle +=
+            orbitSpeed *
+            Time.deltaTime;
+
+
+        // =================================================
+        // ساخت Rotation
+        // =================================================
+
+        Quaternion rotation =
+            Quaternion.Euler(
+                0f,
+                currentAngle,
+                0f
+            );
+
+
+        // =================================================
+        // فاصله دوربین از Avatar
+        // =================================================
+
+        Vector3 offset =
+            rotation *
+            new Vector3(
+                0f,
+                0f,
+                orbitDistance
+            );
+
+
+        // =================================================
+        // موقعیت XR Origin
+        // =================================================
+
+        xrOrigin.position =
+            avatar.position +
+            offset;
+
+
+        // =================================================
+        // نگاه کردن به Avatar
+        // =================================================
+
+        Vector3 lookDirection =
+            avatar.position -
+            xrOrigin.position;
+
+
+        if (lookDirection.sqrMagnitude > 0.001f)
+        {
+            xrOrigin.rotation =
+                Quaternion.LookRotation(
+                    lookDirection,
+                    Vector3.up
+                );
+        }
+    }
+
+
+    // =====================================================
+    // EXIT INSPECT
+    // =====================================================
+
+    private void ExitInspect()
+    {
+        inspecting = false;
+
+
+        // =================================================
+        // باز کردن کنترل Avatar
+        // =================================================
+
+        if (avatarController != null)
+        {
+            avatarController.SetMovementLocked(false);
+
+            avatarController.allowCameraFollow = true;
+        }
+
+
+        // =================================================
+        // برگرداندن دوربین پشت Avatar
+        // =================================================
+
+        ReturnBehindAvatar();
+    }
+
+
+    // =====================================================
+    // RETURN CAMERA BEHIND AVATAR
+    // =====================================================
+
+    private void ReturnBehindAvatar()
+    {
+        if (avatar == null ||
+            xrOrigin == null)
+            return;
+
+
+        Vector3 back =
+            -avatar.forward;
+
+
+        back.y = 0f;
+
+
+        if (back.sqrMagnitude < 0.001f)
+            return;
+
+
+        back.Normalize();
+
+
+        Vector3 position =
+            avatar.position +
+            back *
+            orbitDistance;
+
+
+        position.y =
+            avatar.position.y +
+            orbitHeight;
+
+
+        xrOrigin.position =
+            position;
+
+
+        xrOrigin.rotation =
+            Quaternion.Euler(
+                0f,
+                avatar.eulerAngles.y,
+                0f
+            );
+    }
+}

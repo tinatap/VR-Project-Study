@@ -20,7 +20,10 @@ namespace StarterAssets
 
         [Header("Input")]
 
-        [Tooltip("Right Thumbstick - Avatar Rotation")]
+        [Tooltip("Right Grip - Orbit Camera")]
+        public InputActionReference rightGripAction;
+
+        [Tooltip("Right Thumbstick - Rotate Avatar")]
         public InputActionReference turnAction;
 
         [Tooltip("Right Trigger - Move Forward")]
@@ -40,18 +43,22 @@ namespace StarterAssets
         // ROTATION
         // =====================================================
 
-        [Header("Rotation")]
+        [Header("Avatar Rotation")]
 
+        [Tooltip("Avatar rotation speed from Right Thumbstick")]
         public float turnSpeed = 90f;
 
 
         // =====================================================
-        // THIRD PERSON CAMERA
+        // CAMERA ORBIT
         // =====================================================
 
-        [Header("Third Person Camera")]
+        [Header("Camera Orbit")]
 
-        [Tooltip("Distance of XR Origin behind Avatar")]
+        [Tooltip("Automatic camera orbit speed while Right Grip is held")]
+        public float orbitSpeed = 30f;
+
+        [Tooltip("Distance of XR Origin from Avatar")]
         public float cameraDistance = 3f;
 
         [Tooltip("Height of XR Origin")]
@@ -79,6 +86,9 @@ namespace StarterAssets
         // قفل حرکت و چرخش Avatar
         private bool movementLocked = false;
 
+        // آیا دوربین اجازه دارد پشت Avatar قرار بگیرد؟
+        public bool allowCameraFollow = true;
+
 
         // =====================================================
         // AWAKE
@@ -100,6 +110,9 @@ namespace StarterAssets
 
         private void OnEnable()
         {
+            if (rightGripAction != null)
+                rightGripAction.action.Enable();
+
             if (turnAction != null)
                 turnAction.action.Enable();
 
@@ -114,6 +127,9 @@ namespace StarterAssets
 
         private void OnDisable()
         {
+            if (rightGripAction != null)
+                rightGripAction.action.Disable();
+
             if (turnAction != null)
                 turnAction.action.Disable();
 
@@ -130,17 +146,15 @@ namespace StarterAssets
         {
             movementLocked = locked;
 
-            // اگر حرکت قفل شد، انیمیشن هم متوقف شود
-            if (locked && animator != null)
-            {
-                animator.SetFloat("Speed", 0f);
-                animator.SetFloat("MotionSpeed", 0f);
-            }
-
-            // جلوگیری از باقی ماندن سرعت عمودی
             if (locked)
             {
                 verticalVelocity = 0f;
+
+                if (animator != null)
+                {
+                    animator.SetFloat("Speed", 0f);
+                    animator.SetFloat("MotionSpeed", 0f);
+                }
             }
         }
 
@@ -154,62 +168,87 @@ namespace StarterAssets
             if (xrOrigin == null)
                 return;
 
-            // اگر حداقل یک پنل باز است،
-            // Avatar نه حرکت می‌کند و نه می‌چرخد
+
+            // =================================================
+            // اگر Start Room در حال Inspect است
+            // Avatar نباید حرکت یا چرخش کند.
+            // =================================================
+
             if (movementLocked)
                 return;
 
+
+            // =================================================
+            // حرکت با Right Trigger
+            // =================================================
+
             MoveForward();
+
+
+            // =================================================
+            // چرخش Avatar با Right Thumbstick
+            // =================================================
+
             RotateAvatar();
+
+
+            // =================================================
+            // Grip = چرخش خودکار دور Avatar
+            // =================================================
+
+            if (IsRightGripHeld())
+            {
+                OrbitCamera();
+            }
         }
 
 
         // =====================================================
         // LATE UPDATE
-        // XR ORIGIN ALWAYS BEHIND AVATAR
         // =====================================================
 
         private void LateUpdate()
         {
-            KeepXROriginBehindAvatar();
+            if (xrOrigin == null)
+                return;
+
+
+            // اگر StartRoom کنترل دوربین را گرفته،
+            // این اسکریپت نباید XR Origin را جابه‌جا کند.
+
+            if (!allowCameraFollow)
+                return;
+
+
+            // اگر Grip نگه داشته نشده،
+            // دوربین پشت Avatar قرار بگیرد.
+
+            if (!IsRightGripHeld())
+            {
+                KeepXROriginBehindAvatar();
+            }
         }
 
 
         // =====================================================
-        // RIGHT TRIGGER
         // MOVE FORWARD
+        // RIGHT TRIGGER
         // =====================================================
 
         private void MoveForward()
         {
-            // مقدار تریگر راست
+            if (forwardAction == null)
+                return;
+
+
             float input =
                 forwardAction.action.ReadValue<float>();
 
 
-            // اگر تریگر فشرده نشده
-            if (input < 0.01f)
-            {
-                if (animator != null)
-                {
-                    animator.SetFloat("Speed", 0f);
-                    animator.SetFloat("MotionSpeed", 0f);
-                }
+            // =================================================
+            // GRAVITY
+            // =================================================
 
-                return;
-            }
-
-
-            // حرکت فقط در جهت جلوی Avatar
-            Vector3 direction =
-                transform.forward;
-
-            direction.y = 0f;
-
-            direction.Normalize();
-
-
-            // Gravity
             if (characterController.isGrounded)
             {
                 if (verticalVelocity < 0f)
@@ -223,18 +262,61 @@ namespace StarterAssets
             }
 
 
-            // سرعت بر اساس میزان فشار Trigger
+            // =================================================
+            // اگر Trigger رها شده
+            // فقط Gravity اعمال شود
+            // =================================================
+
+            if (input < 0.01f)
+            {
+                if (animator != null)
+                {
+                    animator.SetFloat("Speed", 0f);
+                    animator.SetFloat("MotionSpeed", 0f);
+                }
+
+
+                Vector3 gravityVelocity =
+                    Vector3.up *
+                    verticalVelocity;
+
+
+                characterController.Move(
+                    gravityVelocity *
+                    Time.deltaTime
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // جهت حرکت Avatar
+            // =================================================
+
+            Vector3 direction =
+                transform.forward;
+
+            direction.y = 0f;
+
+
+            if (direction.sqrMagnitude > 0.001f)
+                direction.Normalize();
+
+
+            // =================================================
+            // حرکت
+            // =================================================
+
             Vector3 velocity =
                 direction *
                 moveSpeed *
                 input;
 
-
             velocity.y =
                 verticalVelocity;
 
 
-            // حرکت Avatar
             characterController.Move(
                 velocity *
                 Time.deltaTime
@@ -274,26 +356,32 @@ namespace StarterAssets
 
         private void RotateAvatar()
         {
+            if (turnAction == null)
+                return;
+
+
             Vector2 input =
                 turnAction.action.ReadValue<Vector2>();
 
 
-            // فقط محور X تامب‌استیک
+            // فقط محور X استفاده می‌شود
             float turn =
                 input.x;
 
 
-            if (Mathf.Abs(turn) < 0.01f)
+            // Dead Zone
+            if (Mathf.Abs(turn) < 0.1f)
                 return;
 
 
+            // محاسبه مقدار چرخش
             float rotation =
                 turn *
                 turnSpeed *
                 Time.deltaTime;
 
 
-            // فقط Avatar می‌چرخد
+            // چرخش Avatar
             transform.Rotate(
                 0f,
                 rotation,
@@ -304,8 +392,75 @@ namespace StarterAssets
 
 
         // =====================================================
-        // XR ORIGIN
-        // ALWAYS BEHIND AVATAR
+        // RIGHT GRIP
+        // =====================================================
+
+        private bool IsRightGripHeld()
+        {
+            if (rightGripAction == null)
+                return false;
+
+
+            float grip =
+                rightGripAction.action.ReadValue<float>();
+
+
+            return grip > 0.1f;
+        }
+
+
+        // =====================================================
+        // CAMERA ORBIT
+        // =====================================================
+
+        private void OrbitCamera()
+        {
+            if (xrOrigin == null)
+                return;
+
+
+            // مرکز چرخش
+            Vector3 pivot =
+                transform.position;
+
+
+            // =================================================
+            // چرخش خودکار دور Avatar
+            // =================================================
+
+            xrOrigin.RotateAround(
+                pivot,
+                Vector3.up,
+                orbitSpeed *
+                Time.deltaTime
+            );
+
+
+            // =================================================
+            // دوربین به Avatar نگاه کند
+            // =================================================
+
+            Vector3 direction =
+                pivot -
+                xrOrigin.position;
+
+
+            direction.y = 0f;
+
+
+            if (direction.sqrMagnitude > 0.001f)
+            {
+                xrOrigin.rotation =
+                    Quaternion.LookRotation(
+                        direction,
+                        Vector3.up
+                    );
+            }
+        }
+
+
+        // =====================================================
+        // KEEP XR ORIGIN BEHIND AVATAR
         // =====================================================
 
         private void KeepXROriginBehindAvatar()
@@ -313,10 +468,6 @@ namespace StarterAssets
             if (xrOrigin == null)
                 return;
 
-
-            // ---------------------------------------------
-            // جهت پشت Avatar
-            // ---------------------------------------------
 
             Vector3 back =
                 -transform.forward;
@@ -332,35 +483,20 @@ namespace StarterAssets
             back.Normalize();
 
 
-            // ---------------------------------------------
-            // موقعیت XR Origin
-            // ---------------------------------------------
-
             Vector3 position =
                 transform.position +
-                back * cameraDistance;
+                back *
+                cameraDistance;
 
-
-            // ---------------------------------------------
-            // ارتفاع
-            // ---------------------------------------------
 
             position.y =
                 transform.position.y +
                 cameraHeight;
 
 
-            // ---------------------------------------------
-            // قرار دادن XR Origin
-            // ---------------------------------------------
-
             xrOrigin.position =
                 position;
 
-
-            // ---------------------------------------------
-            // جهت XR Origin
-            // ---------------------------------------------
 
             xrOrigin.rotation =
                 Quaternion.Euler(

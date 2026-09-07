@@ -1,4 +1,3 @@
-
 using TMPro;
 using UnityEngine;
 using System.Collections;
@@ -211,7 +210,6 @@ public class GameManager : MonoBehaviour
 
     public TextMeshProUGUI timerText;
 
-    public TextMeshProUGUI mazeNumberText;
 
     // =====================================================
     // EXIT UI
@@ -681,13 +679,17 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // REGISTER START ROOM YES
+    // START GAME FROM MAZE 1
     // =====================================================
 
-    public void RegisterStartRoomYes()
+    public void StartGameFromMaze1()
     {
-        if (startRoomResultSaved)
+        if (gameFinished)
             return;
+
+        // -------------------------------------------------
+        // START ROOM TIMING
+        // -------------------------------------------------
 
         startRoomDuration =
             Mathf.Max(
@@ -710,6 +712,10 @@ public class GameManager : MonoBehaviour
 
         startRoomResultSaved = true;
 
+        // -------------------------------------------------
+        // EXACT YES BUTTON EVENT
+        // -------------------------------------------------
+
         SendTCPEvent(
             "START_ROOM_YES",
             "BUTTON_PRESSED",
@@ -718,27 +724,6 @@ public class GameManager : MonoBehaviour
             "; StartQuestionPanelDuration=" +
             startQuestionPanelDuration.ToString("F3")
         );
-
-        Debug.Log(
-            "START_ROOM_YES registered immediately.\n" +
-            "Start Room Duration: " +
-            startRoomDuration.ToString("F3") +
-            " sec\n" +
-            "Start Question Panel Duration: " +
-            startQuestionPanelDuration.ToString("F3") +
-            " sec"
-        );
-    }
-
-
-    // =====================================================
-    // START GAME FROM MAZE 1
-    // =====================================================
-
-    public void StartGameFromMaze1()
-    {
-        if (gameFinished)
-            return;
 
         // -------------------------------------------------
         // GAME TIMER STARTS EXACTLY HERE
@@ -1031,9 +1016,6 @@ public class GameManager : MonoBehaviour
         if (timerText != null)
             timerText.gameObject.SetActive(show);
 
-        if (mazeNumberText != null)
-            mazeNumberText.gameObject.SetActive(show);
-
         if (coinCounterPanel != null)
         {
             coinCounterPanel.SetActive(
@@ -1113,12 +1095,6 @@ public class GameManager : MonoBehaviour
         mazeStartTime = Time.time;
 
         SetMazeSettings(mazeNumber);
-
-        if (mazeNumberText != null)
-        {
-            mazeNumberText.text = "Maze " + mazeNumber;
-            mazeNumberText.gameObject.SetActive(true);
-        }
 
         ResetCoins();
 
@@ -2584,4 +2560,3 @@ public class ExitConfirmRecord
 
     public float totalGameElapsedTime;
 }
-
