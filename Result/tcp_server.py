@@ -2,7 +2,11 @@ import socket
 import struct
 import json
 import os
+import threading
+import time
 from datetime import datetime
+
+from openpyxl import Workbook, load_workbook
 
 
 # ============================================================
@@ -14,24 +18,336 @@ PORT = 12345
 
 DATA_FOLDER = "analytics_data"
 
-os.makedirs(
-    DATA_FOLDER,
-    exist_ok=True
-)
+os.makedirs(DATA_FOLDER, exist_ok=True)
+
+
+# ============================================================
+# CONTINUOUS DATA FILES
+# ============================================================
 
 DATA_FILE = os.path.join(
     DATA_FOLDER,
     "continuous_data.jsonl"
 )
 
+EXCEL_FILE = os.path.join(
+    DATA_FOLDER,
+    "continuous_data.xlsx"
+)
+
 
 # ============================================================
-# RECEIVE EXACT NUMBER OF BYTES
+# EXPERIMENT SUMMARY FILE
 # ============================================================
 
-def receive_exact(conn, size):
+SUMMARY_FILE = os.path.join(
+    DATA_FOLDER,
+    "experiment_summary.json"
+)
+
+
+# ============================================================
+# EXCEL SETTINGS
+# ============================================================
+
+EXCEL_SAVE_INTERVAL = 10
+
+
+# ============================================================
+# EXCEL VARIABLES
+# ============================================================
+
+excel_lock = threading.Lock()
+
+excel_dirty = False
+
+excel_running = True
+
+
+# ============================================================
+# CREATE EXCEL
+# ============================================================
+
+print()
+print("Creating Excel file...")
+
+try:
+
+    workbook = Workbook()
+
+    sheet = workbook.active
+
+    sheet.title = "Data"
+
+    workbook.save(
+        EXCEL_FILE
+    )
+
+    workbook.close()
+
+    print(
+        "Excel file created successfully:"
+    )
+
+    print(
+        EXCEL_FILE
+    )
+
+except Exception as e:
+
+    print(
+        "!!! EXCEL CREATION ERROR !!!"
+    )
+
+    print(
+        repr(e)
+    )
+
+    raise
+
+
+# ============================================================
+# OPEN EXCEL
+# ============================================================
+
+workbook = load_workbook(
+    EXCEL_FILE
+)
+
+sheet = workbook["Data"]
+
+headers = {}
+
+
+# ============================================================
+# ADD HEADER
+# ============================================================
+
+def get_column(key):
+
+    global headers
+
+    if key in headers:
+        return headers[key]
+
+
+    # --------------------------------------------------------
+    # New column
+    # --------------------------------------------------------
+
+    column = sheet.max_column + 1
+
+
+    # Empty first cell
+
+    if (
+        sheet.max_row == 1
+        and sheet.cell(
+            row=1,
+            column=1
+        ).value is None
+    ):
+
+        column = 1
+
+
+    sheet.cell(
+        row=1,
+        column=column
+    ).value = key
+
+    headers[key] = column
+
+    return column
+
+
+# ============================================================
+# ADD DATA TO EXCEL
+# ============================================================
+
+def add_to_excel(data):
+
+    global excel_dirty
+
+    with excel_lock:
+
+        try:
+
+            # ------------------------------------------------
+            # Create columns
+            # ------------------------------------------------
+
+            for key in data.keys():
+
+                get_column(key)
+
+
+            # ------------------------------------------------
+            # New row
+            # ------------------------------------------------
+
+            row = sheet.max_row + 1
+
+
+            # ------------------------------------------------
+            # Write values
+            # ------------------------------------------------
+
+            for key, value in data.items():
+
+                column = headers[key]
+
+                cell = sheet.cell(
+                    row=row,
+                    column=column
+                )
+
+
+                # --------------------------------------------
+                # Boolean
+                # --------------------------------------------
+
+                if isinstance(value, bool):
+
+                    cell.value = value
+
+
+                # --------------------------------------------
+                # Number
+                # --------------------------------------------
+
+                elif isinstance(
+                    value,
+                    (int, float)
+                ):
+
+                    cell.value = value
+
+
+                # --------------------------------------------
+                # None
+                # --------------------------------------------
+
+                elif value is None:
+
+                    cell.value = None
+
+
+                # --------------------------------------------
+                # List / Dictionary
+                # --------------------------------------------
+
+                elif isinstance(
+                    value,
+                    (list, dict)
+                ):
+
+                    cell.value = json.dumps(
+                        value,
+                        ensure_ascii=False
+                    )
+
+
+                # --------------------------------------------
+                # String
+                # --------------------------------------------
+
+                else:
+
+                    cell.value = value
+
+
+            excel_dirty = True
+
+
+        except Exception as e:
+
+            print()
+            print(
+                "!!! EXCEL DATA ERROR !!!"
+            )
+
+            print(
+                repr(e)
+            )
+
+
+# ============================================================
+# EXCEL AUTO SAVE
+# ============================================================
+
+def excel_auto_save():
+
+    global excel_dirty
+
+    print(
+        f"Excel auto-save started: "
+        f"every {EXCEL_SAVE_INTERVAL} seconds"
+    )
+
+
+    while excel_running:
+
+        time.sleep(
+            EXCEL_SAVE_INTERVAL
+        )
+
+
+        with excel_lock:
+
+            if excel_dirty:
+
+                try:
+
+                    workbook.save(
+                        EXCEL_FILE
+                    )
+
+                    excel_dirty = False
+
+                    print()
+
+                    print(
+                        "[EXCEL] Saved successfully."
+                    )
+
+
+                except Exception as e:
+
+                    print()
+
+                    print(
+                        "!!! EXCEL SAVE ERROR !!!"
+                    )
+
+                    print(
+                        repr(e)
+                    )
+
+
+# ============================================================
+# START EXCEL THREAD
+# ============================================================
+
+excel_thread = threading.Thread(
+    target=excel_auto_save,
+    daemon=True
+)
+
+excel_thread.start()
+
+
+# ============================================================
+# RECEIVE EXACT BYTES
+# ============================================================
+
+def receive_exact(
+    conn,
+    size
+):
 
     data = b""
+
 
     while len(data) < size:
 
@@ -39,16 +355,20 @@ def receive_exact(conn, size):
             size - len(data)
         )
 
+
         if not chunk:
+
             return None
 
+
         data += chunk
+
 
     return data
 
 
 # ============================================================
-# RECEIVE ONE MESSAGE
+# RECEIVE MESSAGE
 # ============================================================
 
 def receive_message(conn):
@@ -62,12 +382,18 @@ def receive_message(conn):
         4
     )
 
+
     if length_bytes is None:
+
         return None
 
 
     # --------------------------------------------------------
-    # BIG-ENDIAN
+    # Big Endian unsigned integer
+    # Compatible with Unity:
+    #
+    # IPAddress.HostToNetworkOrder(...)
+    #
     # --------------------------------------------------------
 
     message_length = struct.unpack(
@@ -75,10 +401,6 @@ def receive_message(conn):
         length_bytes
     )[0]
 
-
-    # --------------------------------------------------------
-    # Safety check
-    # --------------------------------------------------------
 
     if message_length <= 0:
 
@@ -101,7 +423,7 @@ def receive_message(conn):
 
 
     # --------------------------------------------------------
-    # Receive JSON
+    # Receive JSON bytes
     # --------------------------------------------------------
 
     json_bytes = receive_exact(
@@ -109,51 +431,42 @@ def receive_message(conn):
         message_length
     )
 
+
     if json_bytes is None:
+
         return None
 
 
-    # --------------------------------------------------------
-    # Decode UTF-8
-    # --------------------------------------------------------
-
-    json_string = json_bytes.decode(
-        "utf-8"
-    )
-
-
-    # --------------------------------------------------------
-    # Parse JSON
-    # --------------------------------------------------------
-
     try:
+
+        json_string = json_bytes.decode(
+            "utf-8"
+        )
+
 
         data = json.loads(
             json_string
         )
 
+
         return data
 
-    except json.JSONDecodeError as e:
+
+    except Exception as e:
 
         print(
             "JSON ERROR:",
-            e
-        )
-
-        print(
-            "Received:",
-            json_string
+            repr(e)
         )
 
         return None
 
 
 # ============================================================
-# SAVE DATA
+# SAVE CONTINUOUS JSON
 # ============================================================
 
-def save_data(data):
+def save_continuous_json(data):
 
     with open(
         DATA_FILE,
@@ -173,7 +486,215 @@ def save_data(data):
 
 
 # ============================================================
-# HANDLE UNITY CLIENT
+# SAVE EXPERIMENT SUMMARY
+# ============================================================
+
+def save_experiment_summary(data):
+
+    try:
+
+        # ----------------------------------------------------
+        # Add server time
+        # ----------------------------------------------------
+
+        data["serverReceivedTime"] = (
+            datetime.now().isoformat()
+        )
+
+
+        # ----------------------------------------------------
+        # Save as formatted JSON
+        # ----------------------------------------------------
+
+        with open(
+            SUMMARY_FILE,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                ensure_ascii=False,
+                indent=4
+            )
+
+
+        # ----------------------------------------------------
+        # Console information
+        # ----------------------------------------------------
+
+        maze_visits = data.get(
+            "mazeVisits",
+            []
+        )
+
+
+        print()
+        print(
+            "=========================================="
+        )
+
+        print(
+            "EXPERIMENT SUMMARY RECEIVED"
+        )
+
+        print(
+            "=========================================="
+        )
+
+        print(
+            "Final Result:",
+            data.get("finalResult")
+        )
+
+        print(
+            "Total Game Time:",
+            data.get("totalGameTime")
+        )
+
+        print(
+            "Final Score:",
+            data.get("finalScore")
+        )
+
+        print(
+            "Highest Completed Maze:",
+            data.get("highestCompletedMaze")
+        )
+
+        print(
+            "Start Room Duration:",
+            data.get("startRoomDuration")
+        )
+
+        print(
+            "Start Question Panel Duration:",
+            data.get("startQuestionPanelDuration")
+        )
+
+        print(
+            "Maze Visits:",
+            len(maze_visits)
+        )
+
+        print(
+            "Summary file:",
+            SUMMARY_FILE
+        )
+
+        print(
+            "=========================================="
+        )
+
+
+        # ----------------------------------------------------
+        # Print each maze visit
+        # ----------------------------------------------------
+
+        for visit in maze_visits:
+
+            print(
+                "Visit #{visit} | "
+                "Maze={maze} | "
+                "Attempt={attempt} | "
+                "Coins={coins}/{totalCoins} | "
+                "Duration={duration:.3f}s | "
+                "Result={result} | "
+                "End={end}".format(
+
+                    visit=visit.get(
+                        "visitNumber"
+                    ),
+
+                    maze=visit.get(
+                        "mazeNumber"
+                    ),
+
+                    attempt=visit.get(
+                        "attemptNumber"
+                    ),
+
+                    coins=visit.get(
+                        "collectedCoins",
+                        0
+                    ),
+
+                    totalCoins=visit.get(
+                        "totalCoins",
+                        0
+                    ),
+
+                    duration=float(
+                        visit.get(
+                            "durationSeconds",
+                            0
+                        )
+                    ),
+
+                    result=visit.get(
+                        "result"
+                    ),
+
+                    end=visit.get(
+                        "endReason"
+                    )
+                )
+            )
+
+
+        print(
+            "=========================================="
+        )
+
+
+    except Exception as e:
+
+        print()
+        print(
+            "!!! SUMMARY SAVE ERROR !!!"
+        )
+
+        print(
+            repr(e)
+        )
+
+
+# ============================================================
+# HANDLE CONTINUOUS DATA
+# ============================================================
+
+def handle_continuous_data(data):
+
+    # --------------------------------------------------------
+    # Add server reception time
+    # --------------------------------------------------------
+
+    data["serverReceivedTime"] = (
+        datetime.now().isoformat()
+    )
+
+
+    # --------------------------------------------------------
+    # Save JSONL
+    # --------------------------------------------------------
+
+    save_continuous_json(
+        data
+    )
+
+
+    # --------------------------------------------------------
+    # Save Excel
+    # --------------------------------------------------------
+
+    add_to_excel(
+        data
+    )
+
+
+# ============================================================
+# HANDLE CLIENT
 # ============================================================
 
 def handle_client(
@@ -182,6 +703,7 @@ def handle_client(
 ):
 
     print()
+
     print(
         "=========================================="
     )
@@ -211,6 +733,7 @@ def handle_client(
                 conn
             )
 
+
             if data is None:
 
                 print(
@@ -223,47 +746,59 @@ def handle_client(
             message_count += 1
 
 
-            # ------------------------------------------------
-            # Add server receive time
-            # ------------------------------------------------
+            # =================================================
+            # IDENTIFY MESSAGE TYPE
+            # =================================================
 
-            data["serverReceivedTime"] = (
-                datetime.now().isoformat()
+            record_type = data.get(
+                "recordType",
+                ""
             )
 
 
-            # ------------------------------------------------
-            # Save
-            # ------------------------------------------------
+            message_type = data.get(
+                "messageType",
+                ""
+            )
 
-            save_data(
+
+            # =================================================
+            # EXPERIMENT SUMMARY
+            # =================================================
+
+            if (
+                record_type ==
+                "EXPERIMENT_SUMMARY"
+                or
+                message_type ==
+                "EXPERIMENT_SUMMARY"
+            ):
+
+                save_experiment_summary(
+                    data
+                )
+
+                continue
+
+
+            # =================================================
+            # CONTINUOUS DATA / EVENT
+            # =================================================
+
+            handle_continuous_data(
                 data
             )
 
 
-            # ------------------------------------------------
-            # Console
-            # ------------------------------------------------
+            # =================================================
+            # CONSOLE
+            # =================================================
 
             print(
                 f"[{message_count}] "
+                f"Type={record_type} | "
                 f"Maze={data.get('mazeNumber')} | "
-                f"Attempt={data.get('attemptNumber')} | "
-
-                f"PlayerRot=("
-                f"{data.get('playerRotationX', 0):.2f}, "
-                f"{data.get('playerRotationY', 0):.2f}, "
-                f"{data.get('playerRotationZ', 0):.2f}"
-                f") | "
-
-                f"RightGrab="
-                f"{data.get('rightGrab', 0):.2f} | "
-
-                f"Head=("
-                f"{data.get('headPositionX', 0):.2f}, "
-                f"{data.get('headPositionY', 0):.2f}, "
-                f"{data.get('headPositionZ', 0):.2f}"
-                f")"
+                f"Attempt={data.get('attemptNumber')}"
             )
 
 
@@ -277,14 +812,52 @@ def handle_client(
     except Exception as e:
 
         print(
-            "Client error:",
-            e
+            "CLIENT ERROR:"
+        )
+
+        print(
+            repr(e)
         )
 
 
     finally:
 
-        conn.close()
+        # ----------------------------------------------------
+        # FINAL EXCEL SAVE
+        # ----------------------------------------------------
+
+        with excel_lock:
+
+            try:
+
+                workbook.save(
+                    EXCEL_FILE
+                )
+
+                print(
+                    "Excel final save completed."
+                )
+
+
+            except Exception as e:
+
+                print(
+                    "!!! FINAL EXCEL SAVE ERROR !!!"
+                )
+
+                print(
+                    repr(e)
+                )
+
+
+        try:
+
+            conn.close()
+
+        except:
+
+            pass
+
 
         print(
             "Connection closed:",
@@ -298,7 +871,11 @@ def handle_client(
 
 def start_server():
 
+    global excel_running
+
+
     print()
+
     print(
         "=========================================="
     )
@@ -315,9 +892,31 @@ def start_server():
         f"Listening on {HOST}:{PORT}"
     )
 
+    print()
+
     print(
-        "Data file:",
+        "CONTINUOUS JSON:",
         DATA_FILE
+    )
+
+    print(
+        "CONTINUOUS EXCEL:",
+        EXCEL_FILE
+    )
+
+    print()
+
+    print(
+        "EXPERIMENT SUMMARY:",
+        SUMMARY_FILE
+    )
+
+    print()
+
+    print(
+        "Excel save interval:",
+        EXCEL_SAVE_INTERVAL,
+        "seconds"
     )
 
     print(
@@ -325,13 +924,15 @@ def start_server():
     )
 
 
+    # ========================================================
+    # CREATE SERVER
+    # ========================================================
+
     server = socket.socket(
         socket.AF_INET,
         socket.SOCK_STREAM
     )
 
-
-    # Prevent "Address already in use"
 
     server.setsockopt(
         socket.SOL_SOCKET,
@@ -341,7 +942,10 @@ def start_server():
 
 
     server.bind(
-        (HOST, PORT)
+        (
+            HOST,
+            PORT
+        )
     )
 
 
@@ -361,10 +965,12 @@ def start_server():
 
             conn, address = server.accept()
 
+
             handle_client(
                 conn,
                 address
             )
+
 
             print()
 
@@ -382,7 +988,54 @@ def start_server():
 
     finally:
 
-        server.close()
+        print(
+            "Final Excel save..."
+        )
+
+
+        excel_running = False
+
+
+        with excel_lock:
+
+            try:
+
+                workbook.save(
+                    EXCEL_FILE
+                )
+
+                print(
+                    "Final Excel save completed."
+                )
+
+
+            except Exception as e:
+
+                print(
+                    "!!! FINAL SAVE ERROR !!!"
+                )
+
+                print(
+                    repr(e)
+                )
+
+
+            try:
+
+                workbook.close()
+
+            except:
+
+                pass
+
+
+        try:
+
+            server.close()
+
+        except:
+
+            pass
 
 
 # ============================================================

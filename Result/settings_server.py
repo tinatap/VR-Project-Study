@@ -15,11 +15,34 @@ PORT = 12346
 # SETTINGS DATA
 # =========================================================
 
+
 settings = {
-    "environment": "Galaxy",
-    "music": "Calm",
-    "gameMode": "CoinsAndMazeScore",
-    "avatar": "Male"
+
+# Environment:
+    # 1 = Neutral
+    # 2 = Desert
+    # 3 = Galaxy
+    # 4 = Park
+
+    # Music:
+    # 1 = Calm
+    # 2 = Rhythmic
+
+    # Avatar:
+    # 1 = OverWeightedWoman
+    # 2 = UnderWeightedWoman
+    # 3 = TOverWeightedMan
+    # 4 = UnderWeightedMan
+    # 5 = OldWoman
+    # 6 = YoungWoman
+    # 7 = OldMan
+    # 8 = YoungMan
+
+
+    "environment": 2,
+    "music": 2,
+    "avatar": 9,
+    "gameMode": "CoinsAndMazeScore"
 }
 
 
