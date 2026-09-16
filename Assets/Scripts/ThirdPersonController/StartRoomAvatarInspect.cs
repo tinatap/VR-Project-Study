@@ -45,9 +45,6 @@ public class StartRoomAvatarInspect : MonoBehaviour
     [Tooltip("Distance from Avatar")]
     public float orbitDistance = 3f;
 
-    [Tooltip("Height of Camera")]
-    public float orbitHeight = 1.5f;
-
     [Tooltip("Automatic rotation speed")]
     public float orbitSpeed = 30f;
 
@@ -257,9 +254,26 @@ public class StartRoomAvatarInspect : MonoBehaviour
         // موقعیت XR Origin
         // =================================================
 
-        xrOrigin.position =
+        Vector3 cameraPosition =
             avatar.position +
             offset;
+
+
+        // =================================================
+        // ارتفاع دوربین
+        // فقط از VRThirdPersonController
+        // =================================================
+
+        if (avatarController != null)
+        {
+            cameraPosition.y =
+                avatar.position.y +
+                avatarController.cameraHeight;
+        }
+
+
+        xrOrigin.position =
+            cameraPosition;
 
 
         // =================================================
@@ -342,9 +356,17 @@ public class StartRoomAvatarInspect : MonoBehaviour
             orbitDistance;
 
 
-        position.y =
-            avatar.position.y +
-            orbitHeight;
+        // =================================================
+        // ارتفاع دوربین
+        // فقط از VRThirdPersonController
+        // =================================================
+
+        if (avatarController != null)
+        {
+            position.y =
+                avatar.position.y +
+                avatarController.cameraHeight;
+        }
 
 
         xrOrigin.position =

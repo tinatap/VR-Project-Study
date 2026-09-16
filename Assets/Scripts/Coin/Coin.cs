@@ -38,7 +38,7 @@ public class Coin : MonoBehaviour
                 // DISABLE COIN
                 // =========================================
 
-                gameObject.SetActive(false);
+                Destroy(gameObject);
             }
         }
     }

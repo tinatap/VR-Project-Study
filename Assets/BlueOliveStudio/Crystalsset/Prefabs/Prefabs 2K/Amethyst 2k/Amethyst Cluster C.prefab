@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7947029287245973831}
   - component: {fileID: -4590633779758555239}
+  - component: {fileID: 2706468875302382356}
   m_Layer: 0
   m_Name: Amethyst Cluster C
   m_TagString: Untagged
@@ -55,6 +56,27 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
+--- !u!65 &2706468875302382356
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2518132312620273559}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.5454299, y: 0.26489365, z: 0.52296185}
+  m_Center: {x: -0.071036495, y: 0.09394197, z: -0.009013295}
 --- !u!1001 &5028830441730149634
 PrefabInstance:
   m_ObjectHideFlags: 0

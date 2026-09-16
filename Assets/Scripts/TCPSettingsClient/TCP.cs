@@ -7,45 +7,46 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class TCP : MonoBehaviour
 {
-    // ===================================================== 
-    // TCP CONNECTION 
-    // ===================================================== 
+    // =====================================================
+    // TCP CONNECTION
+    // =====================================================
 
     [Header("TCP Connection")]
 
-    [SerializeField] private string HOST = "127.0.0.1";
+    [SerializeField]
+    private string HOST = "127.0.0.1";
 
-    [SerializeField] private int PORT = 12345;
+    [SerializeField]
+    private int PORT = 12345;
 
     private TcpClient client;
-
     private NetworkStream netStream;
 
     private bool isRunning = true;
-
     private bool isConnected = false;
 
 
-    // ===================================================== 
-    // PLAYER 
-    // ===================================================== 
+    // =====================================================
+    // PLAYER
+    // =====================================================
 
     [Header("Player")]
 
-    [SerializeField] private Transform player;
+    [SerializeField]
+    private Transform player;
 
-    [SerializeField] private Transform centerEyeAnchorTransform;
+    [SerializeField]
+    private Transform centerEyeAnchorTransform;
 
 
-    // ===================================================== 
-    // CONTROLLER TRANSFORMS 
-    // ===================================================== 
+    // =====================================================
+    // CONTROLLERS
+    // =====================================================
 
     [Header("Controller Positions")]
 
@@ -56,9 +57,9 @@ public class TCP : MonoBehaviour
     private Transform leftControllerTransform;
 
 
-    // ===================================================== 
-    // INPUT ACTIONS 
-    // ===================================================== 
+    // =====================================================
+    // INPUT ACTIONS
+    // =====================================================
 
     [Header("Input Actions")]
 
@@ -78,9 +79,9 @@ public class TCP : MonoBehaviour
     private InputActionReference leftTriggerAction;
 
 
-    // ===================================================== 
-    // GAME MANAGER 
-    // ===================================================== 
+    // =====================================================
+    // GAME MANAGER
+    // =====================================================
 
     [Header("Game Manager")]
 
@@ -88,13 +89,13 @@ public class TCP : MonoBehaviour
     private GameManager gameManager;
 
 
-    // ===================================================== 
-    // SEND SETTINGS 
-    // ===================================================== 
+    // =====================================================
+    // SEND SETTINGS
+    // =====================================================
 
     [Header("Send Settings")]
 
-    [Tooltip("Movement data is sent every X seconds.")]
+    [Tooltip("Continuous movement data is sent every X seconds.")]
     [SerializeField]
     private float sendInterval = 0.05f;
 
@@ -103,17 +104,17 @@ public class TCP : MonoBehaviour
     private DateTime startTime;
 
 
-    // ===================================================== 
-    // SEND LOCK 
-    // ===================================================== 
+    // =====================================================
+    // SEND LOCK
+    // =====================================================
 
     private readonly SemaphoreSlim sendLock =
         new SemaphoreSlim(1, 1);
 
 
-    // ===================================================== 
-    // START 
-    // ===================================================== 
+    // =====================================================
+    // START
+    // =====================================================
 
     private async void Start()
     {
@@ -131,9 +132,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // ENABLE INPUTS 
-    // ===================================================== 
+    // =====================================================
+    // ENABLE INPUTS
+    // =====================================================
 
     private void EnableInputs()
     {
@@ -154,9 +155,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // DISABLE INPUTS 
-    // ===================================================== 
+    // =====================================================
+    // DISABLE INPUTS
+    // =====================================================
 
     private void DisableInputs()
     {
@@ -177,9 +178,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // CONNECT TO SERVER 
-    // ===================================================== 
+    // =====================================================
+    // CONNECT TO SERVER
+    // =====================================================
 
     private async Task ConnectToServer()
     {
@@ -227,9 +228,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // UPDATE 
-    // ===================================================== 
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     private void Update()
     {
@@ -256,9 +257,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // GET TCP TIMESTAMP 
-    // ===================================================== 
+    // =====================================================
+    // TIMESTAMP
+    // =====================================================
 
     private float GetTimestamp()
     {
@@ -269,9 +270,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SEND CURRENT DATA 
-    // ===================================================== 
+    // =====================================================
+    // SEND CONTINUOUS DATA
+    // =====================================================
 
     private async Task SendCurrentData()
     {
@@ -286,9 +287,9 @@ public class TCP : MonoBehaviour
 
         try
         {
-            // ================================================= 
-            // HEAD 
-            // ================================================= 
+            // =================================================
+            // HEAD
+            // =================================================
 
             Vector3 headPosition =
                 Vector3.zero;
@@ -306,9 +307,9 @@ public class TCP : MonoBehaviour
             }
 
 
-            // ================================================= 
-            // PLAYER 
-            // ================================================= 
+            // =================================================
+            // PLAYER
+            // =================================================
 
             Vector3 playerPosition =
                 Vector3.zero;
@@ -326,38 +327,54 @@ public class TCP : MonoBehaviour
             }
 
 
-            // ================================================= 
-            // CONTROLLERS 
-            // ================================================= 
+            // =================================================
+            // RIGHT CONTROLLER
+            // =================================================
 
             Vector3 rightControllerPosition =
                 Vector3.zero;
 
-            Vector3 leftControllerPosition =
+            Vector3 rightControllerRotation =
                 Vector3.zero;
 
             if (rightControllerTransform != null)
             {
                 rightControllerPosition =
                     rightControllerTransform.position;
+
+                rightControllerRotation =
+                    rightControllerTransform.eulerAngles;
             }
+
+
+            // =================================================
+            // LEFT CONTROLLER
+            // =================================================
+
+            Vector3 leftControllerPosition =
+                Vector3.zero;
+
+            Vector3 leftControllerRotation =
+                Vector3.zero;
 
             if (leftControllerTransform != null)
             {
                 leftControllerPosition =
                     leftControllerTransform.position;
+
+                leftControllerRotation =
+                    leftControllerTransform.eulerAngles;
             }
 
 
-            // ================================================= 
-            // INPUT 
-            // ================================================= 
+            // =================================================
+            // INPUT
+            // =================================================
 
             Vector2 rightThumbstick =
                 Vector2.zero;
 
             float rightTrigger = 0f;
-
             float rightGrab = 0f;
 
             Vector2 leftThumbstick =
@@ -373,14 +390,12 @@ public class TCP : MonoBehaviour
                     .ReadValue<Vector2>();
             }
 
-
             if (rightTriggerAction != null)
             {
                 rightTrigger =
                     rightTriggerAction.action
                     .ReadValue<float>();
             }
-
 
             if (rightGrabAction != null)
             {
@@ -389,14 +404,12 @@ public class TCP : MonoBehaviour
                     .ReadValue<float>();
             }
 
-
             if (leftThumbstickAction != null)
             {
                 leftThumbstick =
                     leftThumbstickAction.action
                     .ReadValue<Vector2>();
             }
-
 
             if (leftTriggerAction != null)
             {
@@ -406,22 +419,19 @@ public class TCP : MonoBehaviour
             }
 
 
-            // ================================================= 
-            // GAME MANAGER DATA 
-            // ================================================= 
+            // =================================================
+            // GAME MANAGER DATA
+            // =================================================
 
             int currentMaze = 0;
-
             int currentAttempt = 0;
 
             int collectedCoins = 0;
-
             int totalCoins = 0;
 
             int totalScore = 0;
 
             float mazeElapsedTime = 0f;
-
             float totalGameElapsedTime = 0f;
 
 
@@ -450,9 +460,9 @@ public class TCP : MonoBehaviour
             }
 
 
-            // ================================================= 
-            // CREATE DATA 
-            // ================================================= 
+            // =================================================
+            // CREATE CONTINUOUS DATA
+            // =================================================
 
             SentData dataToSend =
                 new SentData
@@ -461,6 +471,8 @@ public class TCP : MonoBehaviour
 
                     timestamp =
                         GetTimestamp(),
+
+                    // HEAD POSITION
 
                     headPositionX =
                         headPosition.x,
@@ -471,6 +483,7 @@ public class TCP : MonoBehaviour
                     headPositionZ =
                         headPosition.z,
 
+                    // HEAD ROTATION
 
                     headRotationX =
                         ConvertRotation(
@@ -487,6 +500,7 @@ public class TCP : MonoBehaviour
                             headRotation.z
                         ),
 
+                    // PLAYER POSITION
 
                     playerPositionX =
                         playerPosition.x,
@@ -497,6 +511,7 @@ public class TCP : MonoBehaviour
                     playerPositionZ =
                         playerPosition.z,
 
+                    // PLAYER ROTATION
 
                     playerRotationX =
                         ConvertRotation(
@@ -513,6 +528,7 @@ public class TCP : MonoBehaviour
                             playerRotation.z
                         ),
 
+                    // RIGHT CONTROLLER POSITION
 
                     rightControllerPositionX =
                         rightControllerPosition.x,
@@ -523,6 +539,24 @@ public class TCP : MonoBehaviour
                     rightControllerPositionZ =
                         rightControllerPosition.z,
 
+                    // RIGHT CONTROLLER ROTATION
+
+                    rightControllerRotationX =
+                        ConvertRotation(
+                            rightControllerRotation.x
+                        ),
+
+                    rightControllerRotationY =
+                        ConvertRotation(
+                            rightControllerRotation.y
+                        ),
+
+                    rightControllerRotationZ =
+                        ConvertRotation(
+                            rightControllerRotation.z
+                        ),
+
+                    // LEFT CONTROLLER POSITION
 
                     leftControllerPositionX =
                         leftControllerPosition.x,
@@ -533,6 +567,24 @@ public class TCP : MonoBehaviour
                     leftControllerPositionZ =
                         leftControllerPosition.z,
 
+                    // LEFT CONTROLLER ROTATION
+
+                    leftControllerRotationX =
+                        ConvertRotation(
+                            leftControllerRotation.x
+                        ),
+
+                    leftControllerRotationY =
+                        ConvertRotation(
+                            leftControllerRotation.y
+                        ),
+
+                    leftControllerRotationZ =
+                        ConvertRotation(
+                            leftControllerRotation.z
+                        ),
+
+                    // RIGHT INPUT
 
                     rightThumbstickX =
                         rightThumbstick.x,
@@ -546,6 +598,7 @@ public class TCP : MonoBehaviour
                     rightGrab =
                         rightGrab,
 
+                    // LEFT INPUT
 
                     leftThumbstickX =
                         leftThumbstick.x,
@@ -556,6 +609,7 @@ public class TCP : MonoBehaviour
                     leftTrigger =
                         leftTrigger,
 
+                    // GAME DATA
 
                     mazeNumber =
                         currentMaze,
@@ -600,9 +654,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // LOG EVENT 
-    // ===================================================== 
+    // =====================================================
+    // LOG EVENT
+    // =====================================================
 
     public void LogEvent(
         string eventType,
@@ -614,11 +668,9 @@ public class TCP : MonoBehaviour
             return;
 
         int mazeNumber = 0;
-
         int attemptNumber = 0;
 
         float mazeTime = 0f;
-
         float totalTime = 0f;
 
 
@@ -675,7 +727,6 @@ public class TCP : MonoBehaviour
             );
 
 
-        // Event is sent immediately. 
         _ = SendEventJson(jsonData);
 
 
@@ -699,9 +750,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SEND EVENT JSON 
-    // ===================================================== 
+    // =====================================================
+    // SEND EVENT JSON
+    // =====================================================
 
     private async Task SendEventJson(
         string jsonData
@@ -732,9 +783,130 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // SEND JSON 
-    // ===================================================== 
+    // =====================================================
+    // SEND EXPERIMENT SUMMARY
+    // =====================================================
+
+    public async void SendExperimentSummary(
+        string finalResult,
+        float totalGameTime,
+        int finalScore,
+        int highestCompletedMaze,
+        float startRoomDuration,
+        float startQuestionPanelDuration,
+        List<MazeVisitRecord> mazeVisits
+    )
+    {
+        if (!isRunning)
+            return;
+
+        if (!isConnected)
+        {
+            Debug.LogError(
+                "TCP: Cannot send experiment summary. " +
+                "TCP is not connected."
+            );
+
+            return;
+        }
+
+        if (mazeVisits == null)
+        {
+            mazeVisits =
+                new List<MazeVisitRecord>();
+        }
+
+
+        // Make a copy so the list cannot be changed
+        // while the message is being serialized.
+
+        List<MazeVisitRecord> visitCopy =
+            new List<MazeVisitRecord>(
+                mazeVisits
+            );
+
+
+        ExperimentSummaryData summary =
+            new ExperimentSummaryData
+            {
+                messageType =
+                    "EXPERIMENT_SUMMARY",
+
+                recordType =
+                    "EXPERIMENT_SUMMARY",
+
+                timestamp =
+                    GetTimestamp(),
+
+                finalResult =
+                    finalResult,
+
+                totalGameTime =
+                    totalGameTime,
+
+                finalScore =
+                    finalScore,
+
+                highestCompletedMaze =
+                    highestCompletedMaze,
+
+                startRoomDuration =
+                    startRoomDuration,
+
+                startQuestionPanelDuration =
+                    startQuestionPanelDuration,
+
+                mazeVisits =
+                    visitCopy
+            };
+
+
+        try
+        {
+            string jsonData =
+                JsonConvert.SerializeObject(
+                    summary
+                );
+
+
+            Debug.Log(
+                "============================================\n" +
+                "SENDING EXPERIMENT SUMMARY\n" +
+                "============================================\n" +
+                "Final Result: " +
+                finalResult +
+                "\nTotal Game Time: " +
+                totalGameTime.ToString("F3") +
+                "\nFinal Score: " +
+                finalScore +
+                "\nHighest Completed Maze: " +
+                highestCompletedMaze +
+                "\nMaze Visits: " +
+                visitCopy.Count +
+                "\n============================================"
+            );
+
+
+            await SendJson(jsonData);
+
+
+            Debug.Log(
+                "EXPERIMENT SUMMARY SENT SUCCESSFULLY."
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                "EXPERIMENT SUMMARY SEND ERROR:\n" +
+                ex.Message
+            );
+        }
+    }
+
+
+    // =====================================================
+    // SEND JSON
+    // =====================================================
 
     private async Task SendJson(
         string jsonData
@@ -760,6 +932,12 @@ public class TCP : MonoBehaviour
                 );
 
 
+            // =================================================
+            // 4-BYTE BIG-ENDIAN LENGTH PREFIX
+            // Compatible with Python:
+            // struct.unpack("!I", ...)
+            // =================================================
+
             byte[] lengthPrefix =
                 BitConverter.GetBytes(
                     IPAddress.HostToNetworkOrder(
@@ -784,6 +962,15 @@ public class TCP : MonoBehaviour
 
             await netStream.FlushAsync();
         }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                "TCP WRITE ERROR:\n" +
+                ex.Message
+            );
+
+            isConnected = false;
+        }
         finally
         {
             sendLock.Release();
@@ -791,9 +978,9 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // CONVERT ROTATION 
-    // ===================================================== 
+    // =====================================================
+    // CONVERT ROTATION
+    // =====================================================
 
     private float ConvertRotation(
         float value
@@ -805,14 +992,13 @@ public class TCP : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // CLOSE CONNECTION 
-    // ===================================================== 
+    // =====================================================
+    // CLOSE CONNECTION
+    // =====================================================
 
     private void CloseConnection()
     {
         isRunning = false;
-
         isConnected = false;
 
         try
@@ -829,15 +1015,16 @@ public class TCP : MonoBehaviour
         {
         }
 
+
         Debug.Log(
             "TCP connection closed."
         );
     }
 
 
-    // ===================================================== 
-    // DESTROY 
-    // ===================================================== 
+    // =====================================================
+    // DESTROY
+    // =====================================================
 
     private void OnDestroy()
     {
@@ -845,13 +1032,19 @@ public class TCP : MonoBehaviour
 
         CloseConnection();
 
-        sendLock.Dispose();
+        try
+        {
+            sendLock.Dispose();
+        }
+        catch
+        {
+        }
     }
 
 
-    // ===================================================== 
-    // APPLICATION QUIT 
-    // ===================================================== 
+    // =====================================================
+    // APPLICATION QUIT
+    // =====================================================
 
     private void OnApplicationQuit()
     {
@@ -860,96 +1053,72 @@ public class TCP : MonoBehaviour
 }
 
 
-// ========================================================= 
-// SENT DATA 
-// ========================================================= 
+// =========================================================
+// CONTINUOUS DATA
+// =========================================================
 
 [Serializable]
 public class SentData
 {
-    // ===================================================== 
-    // RECORD TYPE 
-    // ===================================================== 
-
     public string recordType;
-
-
-    // ===================================================== 
-    // TIME 
-    // ===================================================== 
 
     public float timestamp;
 
 
-    // ===================================================== 
-    // HEAD POSITION 
-    // ===================================================== 
+    // HEAD
 
     public float headPositionX;
     public float headPositionY;
     public float headPositionZ;
-
-
-    // ===================================================== 
-    // HEAD ROTATION 
-    // ===================================================== 
 
     public float headRotationX;
     public float headRotationY;
     public float headRotationZ;
 
 
-    // ===================================================== 
-    // PLAYER POSITION 
-    // ===================================================== 
+    // PLAYER
 
     public float playerPositionX;
     public float playerPositionY;
     public float playerPositionZ;
-
-
-    // ===================================================== 
-    // PLAYER ROTATION 
-    // ===================================================== 
 
     public float playerRotationX;
     public float playerRotationY;
     public float playerRotationZ;
 
 
-    // ===================================================== 
-    // RIGHT CONTROLLER 
-    // ===================================================== 
+    // RIGHT CONTROLLER
 
     public float rightControllerPositionX;
     public float rightControllerPositionY;
     public float rightControllerPositionZ;
 
+    public float rightControllerRotationX;
+    public float rightControllerRotationY;
+    public float rightControllerRotationZ;
 
-    // ===================================================== 
-    // LEFT CONTROLLER 
-    // ===================================================== 
+
+    // LEFT CONTROLLER
 
     public float leftControllerPositionX;
     public float leftControllerPositionY;
     public float leftControllerPositionZ;
 
+    public float leftControllerRotationX;
+    public float leftControllerRotationY;
+    public float leftControllerRotationZ;
 
-    // ===================================================== 
-    // RIGHT INPUT 
-    // ===================================================== 
+
+    // RIGHT INPUT
 
     public float rightThumbstickX;
     public float rightThumbstickY;
 
     public float rightTrigger;
-
     public float rightGrab;
 
 
-    // ===================================================== 
-    // LEFT INPUT 
-    // ===================================================== 
+    // LEFT INPUT
 
     public float leftThumbstickX;
     public float leftThumbstickY;
@@ -957,67 +1126,79 @@ public class SentData
     public float leftTrigger;
 
 
-    // ===================================================== 
-    // GAME DATA 
-    // ===================================================== 
+    // GAME DATA
 
     public int mazeNumber;
-
     public int attemptNumber;
 
     public int collectedCoins;
-
     public int totalCoins;
 
     public int totalScore;
 
     public float mazeElapsedTime;
-
     public float totalGameElapsedTime;
 }
 
 
-// ========================================================= 
-// EVENT DATA 
-// ========================================================= 
+// =========================================================
+// EVENT DATA
+// =========================================================
 
 [Serializable]
 public class EventData
 {
-    // ===================================================== 
-    // RECORD TYPE 
-    // ===================================================== 
-
     public string recordType;
-
-
-    // ===================================================== 
-    // TIME 
-    // ===================================================== 
 
     public float timestamp;
 
 
-    // ===================================================== 
-    // EVENT 
-    // ===================================================== 
-
     public string eventType;
-
     public string eventName;
-
     public string eventMessage;
 
 
-    // ===================================================== 
-    // GAME DATA 
-    // ===================================================== 
-
     public int mazeNumber;
-
     public int attemptNumber;
 
     public float mazeElapsedTime;
-
     public float totalGameElapsedTime;
+}
+
+
+// =========================================================
+// EXPERIMENT SUMMARY
+// =========================================================
+
+[Serializable]
+public class ExperimentSummaryData
+{
+    public string messageType;
+
+    public string recordType;
+
+    public float timestamp;
+
+
+    // FINAL RESULT
+
+    public string finalResult;
+
+    public float totalGameTime;
+
+    public int finalScore;
+
+    public int highestCompletedMaze;
+
+
+    // START ROOM
+
+    public float startRoomDuration;
+
+    public float startQuestionPanelDuration;
+
+
+    // ALL MAZE VISITS
+
+    public List<MazeVisitRecord> mazeVisits;
 }
