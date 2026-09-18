@@ -1,0 +1,27 @@
+{
+    "messageType": "EXPERIMENT_SUMMARY",
+    "recordType": "EXPERIMENT_SUMMARY",
+    "timestamp": 38.847,
+    "finalResult": "FAILED - EXIT",
+    "totalGameTime": 24.76035,
+    "finalScore": 5,
+    "highestCompletedMaze": 1,
+    "startRoomDuration": 7.962783,
+    "mazeVisits": [
+        {
+            "visitNumber": 1,
+            "mazeNumber": 1,
+            "attemptNumber": 1,
+            "durationSeconds": 17.4935226,
+            "collectedCoins": 5,
+            "totalCoins": 15,
+            "result": "SUCCESS",
+            "endReason": "SUCCESS_PANEL",
+            "totalGameElapsedTime": 17.4935226,
+            "startRoomDuration": 7.962783
+        }
+    ],
+    "participantName": "Tina A",
+    "participantID": "5478",
+    "serverReceivedTime": "2026-09-18T13:59:09.059451"
+}

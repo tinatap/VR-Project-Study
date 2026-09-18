@@ -1,14 +1,16 @@
-using Newtonsoft.Json;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json;
+
 using UnityEngine;
 using UnityEngine.InputSystem;
+
 
 public class TCP : MonoBehaviour
 {
@@ -99,7 +101,7 @@ public class TCP : MonoBehaviour
     [SerializeField]
     private float sendInterval = 0.05f;
 
-    private float sendTimer = 0f;
+    private float sendTimer;
 
     private DateTime startTime;
 
@@ -138,20 +140,12 @@ public class TCP : MonoBehaviour
 
     private void EnableInputs()
     {
-        if (rightThumbstickAction != null)
-            rightThumbstickAction.action.Enable();
+        EnableAction(rightThumbstickAction);
+        EnableAction(rightTriggerAction);
+        EnableAction(rightGrabAction);
 
-        if (rightTriggerAction != null)
-            rightTriggerAction.action.Enable();
-
-        if (rightGrabAction != null)
-            rightGrabAction.action.Enable();
-
-        if (leftThumbstickAction != null)
-            leftThumbstickAction.action.Enable();
-
-        if (leftTriggerAction != null)
-            leftTriggerAction.action.Enable();
+        EnableAction(leftThumbstickAction);
+        EnableAction(leftTriggerAction);
     }
 
 
@@ -161,20 +155,40 @@ public class TCP : MonoBehaviour
 
     private void DisableInputs()
     {
-        if (rightThumbstickAction != null)
-            rightThumbstickAction.action.Disable();
+        DisableAction(rightThumbstickAction);
+        DisableAction(rightTriggerAction);
+        DisableAction(rightGrabAction);
 
-        if (rightTriggerAction != null)
-            rightTriggerAction.action.Disable();
+        DisableAction(leftThumbstickAction);
+        DisableAction(leftTriggerAction);
+    }
 
-        if (rightGrabAction != null)
-            rightGrabAction.action.Disable();
 
-        if (leftThumbstickAction != null)
-            leftThumbstickAction.action.Disable();
+    // =====================================================
+    // INPUT HELPERS
+    // =====================================================
 
-        if (leftTriggerAction != null)
-            leftTriggerAction.action.Disable();
+    private void EnableAction(
+        InputActionReference actionReference
+    )
+    {
+        if (actionReference != null &&
+            actionReference.action != null)
+        {
+            actionReference.action.Enable();
+        }
+    }
+
+
+    private void DisableAction(
+        InputActionReference actionReference
+    )
+    {
+        if (actionReference != null &&
+            actionReference.action != null)
+        {
+            actionReference.action.Disable();
+        }
     }
 
 
@@ -199,7 +213,10 @@ public class TCP : MonoBehaviour
             );
 
             if (!isRunning)
+            {
+                client.Close();
                 return;
+            }
 
             netStream =
                 client.GetStream();
@@ -234,26 +251,22 @@ public class TCP : MonoBehaviour
 
     private void Update()
     {
-        if (!isRunning)
+        if (!isRunning ||
+            !isConnected ||
+            netStream == null ||
+            !netStream.CanWrite)
+        {
             return;
-
-        if (!isConnected)
-            return;
-
-        if (netStream == null)
-            return;
-
-        if (!netStream.CanWrite)
-            return;
+        }
 
         sendTimer += Time.deltaTime;
 
-        if (sendTimer >= sendInterval)
-        {
-            sendTimer = 0f;
+        if (sendTimer < sendInterval)
+            return;
 
-            _ = SendCurrentData();
-        }
+        sendTimer -= sendInterval;
+
+        _ = SendCurrentData();
     }
 
 
@@ -276,13 +289,7 @@ public class TCP : MonoBehaviour
 
     private async Task SendCurrentData()
     {
-        if (!isConnected)
-            return;
-
-        if (netStream == null)
-            return;
-
-        if (!netStream.CanWrite)
+        if (!CanSend())
             return;
 
         try
@@ -292,19 +299,10 @@ public class TCP : MonoBehaviour
             // =================================================
 
             Vector3 headPosition =
-                Vector3.zero;
+                GetPosition(centerEyeAnchorTransform);
 
             Vector3 headRotation =
-                Vector3.zero;
-
-            if (centerEyeAnchorTransform != null)
-            {
-                headPosition =
-                    centerEyeAnchorTransform.position;
-
-                headRotation =
-                    centerEyeAnchorTransform.eulerAngles;
-            }
+                GetRotation(centerEyeAnchorTransform);
 
 
             // =================================================
@@ -312,19 +310,10 @@ public class TCP : MonoBehaviour
             // =================================================
 
             Vector3 playerPosition =
-                Vector3.zero;
+                GetPosition(player);
 
             Vector3 playerRotation =
-                Vector3.zero;
-
-            if (player != null)
-            {
-                playerPosition =
-                    player.position;
-
-                playerRotation =
-                    player.eulerAngles;
-            }
+                GetRotation(player);
 
 
             // =================================================
@@ -332,19 +321,10 @@ public class TCP : MonoBehaviour
             // =================================================
 
             Vector3 rightControllerPosition =
-                Vector3.zero;
+                GetPosition(rightControllerTransform);
 
             Vector3 rightControllerRotation =
-                Vector3.zero;
-
-            if (rightControllerTransform != null)
-            {
-                rightControllerPosition =
-                    rightControllerTransform.position;
-
-                rightControllerRotation =
-                    rightControllerTransform.eulerAngles;
-            }
+                GetRotation(rightControllerTransform);
 
 
             // =================================================
@@ -352,19 +332,10 @@ public class TCP : MonoBehaviour
             // =================================================
 
             Vector3 leftControllerPosition =
-                Vector3.zero;
+                GetPosition(leftControllerTransform);
 
             Vector3 leftControllerRotation =
-                Vector3.zero;
-
-            if (leftControllerTransform != null)
-            {
-                leftControllerPosition =
-                    leftControllerTransform.position;
-
-                leftControllerRotation =
-                    leftControllerTransform.eulerAngles;
-            }
+                GetRotation(leftControllerTransform);
 
 
             // =================================================
@@ -372,51 +343,19 @@ public class TCP : MonoBehaviour
             // =================================================
 
             Vector2 rightThumbstick =
-                Vector2.zero;
+                ReadVector2(rightThumbstickAction);
 
-            float rightTrigger = 0f;
-            float rightGrab = 0f;
+            float rightTrigger =
+                ReadFloat(rightTriggerAction);
+
+            float rightGrab =
+                ReadFloat(rightGrabAction);
 
             Vector2 leftThumbstick =
-                Vector2.zero;
+                ReadVector2(leftThumbstickAction);
 
-            float leftTrigger = 0f;
-
-
-            if (rightThumbstickAction != null)
-            {
-                rightThumbstick =
-                    rightThumbstickAction.action
-                    .ReadValue<Vector2>();
-            }
-
-            if (rightTriggerAction != null)
-            {
-                rightTrigger =
-                    rightTriggerAction.action
-                    .ReadValue<float>();
-            }
-
-            if (rightGrabAction != null)
-            {
-                rightGrab =
-                    rightGrabAction.action
-                    .ReadValue<float>();
-            }
-
-            if (leftThumbstickAction != null)
-            {
-                leftThumbstick =
-                    leftThumbstickAction.action
-                    .ReadValue<Vector2>();
-            }
-
-            if (leftTriggerAction != null)
-            {
-                leftTrigger =
-                    leftTriggerAction.action
-                    .ReadValue<float>();
-            }
+            float leftTrigger =
+                ReadFloat(leftTriggerAction);
 
 
             // =================================================
@@ -486,19 +425,13 @@ public class TCP : MonoBehaviour
                     // HEAD ROTATION
 
                     headRotationX =
-                        ConvertRotation(
-                            headRotation.x
-                        ),
+                        ConvertRotation(headRotation.x),
 
                     headRotationY =
-                        ConvertRotation(
-                            headRotation.y
-                        ),
+                        ConvertRotation(headRotation.y),
 
                     headRotationZ =
-                        ConvertRotation(
-                            headRotation.z
-                        ),
+                        ConvertRotation(headRotation.z),
 
                     // PLAYER POSITION
 
@@ -514,19 +447,13 @@ public class TCP : MonoBehaviour
                     // PLAYER ROTATION
 
                     playerRotationX =
-                        ConvertRotation(
-                            playerRotation.x
-                        ),
+                        ConvertRotation(playerRotation.x),
 
                     playerRotationY =
-                        ConvertRotation(
-                            playerRotation.y
-                        ),
+                        ConvertRotation(playerRotation.y),
 
                     playerRotationZ =
-                        ConvertRotation(
-                            playerRotation.z
-                        ),
+                        ConvertRotation(playerRotation.z),
 
                     // RIGHT CONTROLLER POSITION
 
@@ -758,13 +685,7 @@ public class TCP : MonoBehaviour
         string jsonData
     )
     {
-        if (!isConnected)
-            return;
-
-        if (netStream == null)
-            return;
-
-        if (!netStream.CanWrite)
+        if (!CanSend())
             return;
 
         try
@@ -793,7 +714,6 @@ public class TCP : MonoBehaviour
         int finalScore,
         int highestCompletedMaze,
         float startRoomDuration,
-        float startQuestionPanelDuration,
         List<MazeVisitRecord> mazeVisits
     )
     {
@@ -817,8 +737,8 @@ public class TCP : MonoBehaviour
         }
 
 
-        // Make a copy so the list cannot be changed
-        // while the message is being serialized.
+        // Make a copy so the original list
+        // cannot change while serializing.
 
         List<MazeVisitRecord> visitCopy =
             new List<MazeVisitRecord>(
@@ -852,9 +772,6 @@ public class TCP : MonoBehaviour
 
                 startRoomDuration =
                     startRoomDuration,
-
-                startQuestionPanelDuration =
-                    startQuestionPanelDuration,
 
                 mazeVisits =
                     visitCopy
@@ -912,13 +829,7 @@ public class TCP : MonoBehaviour
         string jsonData
     )
     {
-        if (!isConnected)
-            return;
-
-        if (netStream == null)
-            return;
-
-        if (!netStream.CanWrite)
+        if (!CanSend())
             return;
 
 
@@ -979,6 +890,69 @@ public class TCP : MonoBehaviour
 
 
     // =====================================================
+    // DATA HELPERS
+    // =====================================================
+
+    private bool CanSend()
+    {
+        return isRunning &&
+               isConnected &&
+               netStream != null &&
+               netStream.CanWrite;
+    }
+
+
+    private Vector3 GetPosition(
+        Transform target
+    )
+    {
+        return target != null
+            ? target.position
+            : Vector3.zero;
+    }
+
+
+    private Vector3 GetRotation(
+        Transform target
+    )
+    {
+        return target != null
+            ? target.eulerAngles
+            : Vector3.zero;
+    }
+
+
+    private Vector2 ReadVector2(
+        InputActionReference actionReference
+    )
+    {
+        if (actionReference == null ||
+            actionReference.action == null)
+        {
+            return Vector2.zero;
+        }
+
+        return actionReference.action
+            .ReadValue<Vector2>();
+    }
+
+
+    private float ReadFloat(
+        InputActionReference actionReference
+    )
+    {
+        if (actionReference == null ||
+            actionReference.action == null)
+        {
+            return 0f;
+        }
+
+        return actionReference.action
+            .ReadValue<float>();
+    }
+
+
+    // =====================================================
     // CONVERT ROTATION
     // =====================================================
 
@@ -1001,18 +975,18 @@ public class TCP : MonoBehaviour
         isRunning = false;
         isConnected = false;
 
+
         try
         {
             netStream?.Close();
-
             netStream = null;
 
             client?.Close();
-
             client = null;
         }
         catch
         {
+            // Ignore errors during shutdown.
         }
 
 
@@ -1032,12 +1006,14 @@ public class TCP : MonoBehaviour
 
         CloseConnection();
 
+
         try
         {
             sendLock.Dispose();
         }
         catch
         {
+            // Ignore disposal errors.
         }
     }
 
@@ -1152,11 +1128,9 @@ public class EventData
 
     public float timestamp;
 
-
     public string eventType;
     public string eventName;
     public string eventMessage;
-
 
     public int mazeNumber;
     public int attemptNumber;
@@ -1194,8 +1168,6 @@ public class ExperimentSummaryData
     // START ROOM
 
     public float startRoomDuration;
-
-    public float startQuestionPanelDuration;
 
 
     // ALL MAZE VISITS

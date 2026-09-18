@@ -12,38 +12,150 @@ PORT = 12346
 
 
 # =========================================================
-# SETTINGS DATA
+# CHOOSE SETTINGS
 # =========================================================
 
+def choose_settings():
 
-settings = {
-
-# Environment:
-    # 1 = Neutral
-    # 2 = Desert
-    # 3 = Galaxy
-    # 4 = Park
-
-    # Music:
-    # 1 = Calm
-    # 2 = Rhythmic
-
-    # Avatar:
-    # 1 = OverWeightedWoman
-    # 2 = UnderWeightedWoman
-    # 3 = TOverWeightedMan
-    # 4 = UnderWeightedMan
-    # 5 = OldWoman
-    # 6 = YoungWoman
-    # 7 = OldMan
-    # 8 = YoungMan
+    print()
+    print("====================================")
+    print("VR MAZE SETTINGS")
+    print("====================================")
 
 
-    "environment": 2,
-    "music": 2,
-    "avatar": 9,
-    "gameMode": "CoinsAndMazeScore"
-}
+    # -----------------------------------------------------
+    # MUSIC
+    # -----------------------------------------------------
+
+    print()
+    print("Music:")
+    print("1 - Relaxing")
+    print("2 - Motivating")
+
+    while True:
+        try:
+            music = int(input("Enter choice: "))
+
+            if music in [1, 2]:
+                break
+
+            print("Please enter 1 or 2.")
+
+        except ValueError:
+            print("Please enter a number.")
+
+
+    # -----------------------------------------------------
+    # ENVIRONMENT
+    # -----------------------------------------------------
+
+    print()
+    print("Environment:")
+    print("1 - Galaxy")
+    print("2 - Desert")
+    print("3 - Neutral")
+    print("4 - Park")
+
+    while True:
+        try:
+            environment = int(input("Enter choice: "))
+
+            if environment in [1, 2, 3, 4]:
+                break
+
+            print("Please enter a number between 1 and 4.")
+
+        except ValueError:
+            print("Please enter a number.")
+
+
+    # -----------------------------------------------------
+    # AVATAR
+    # -----------------------------------------------------
+
+    print()
+    print("Avatar:")
+    print("1 - OverWeightedWoman")
+    print("2 - UnderWeightedWoman")
+    print("3 - OverWeightedMan")
+    print("4 - UnderWeightedMan")
+    print("5 - OldWoman")
+    print("6 - YoungWoman")
+    print("7 - OldMan")
+    print("8 - YoungMan")
+
+    while True:
+        try:
+            avatar = int(input("Enter choice: "))
+
+            if avatar in range(1, 9):
+                break
+
+            print("Please enter a number between 1 and 8.")
+
+        except ValueError:
+            print("Please enter a number.")
+
+
+    # -----------------------------------------------------
+    # GAME MODE
+    # -----------------------------------------------------
+
+    game_mode = "CoinsAndMazeScore"
+
+
+    # -----------------------------------------------------
+    # CREATE SETTINGS
+    # -----------------------------------------------------
+
+    settings = {
+        "environment": environment,
+        "music": music,
+        "avatar": avatar,
+        "gameMode": game_mode
+    }
+
+
+    # -----------------------------------------------------
+    # SHOW SELECTED SETTINGS
+    # -----------------------------------------------------
+
+    music_names = {
+        1: "Relaxing",
+        2: "Motivating"
+    }
+
+    environment_names = {
+        1: "Galaxy",
+        2: "Desert",
+        3: "Neutral",
+        4: "Park"
+    }
+
+    avatar_names = {
+        1: "OverWeightedWoman",
+        2: "UnderWeightedWoman",
+        3: "OverWeightedMan",
+        4: "UnderWeightedMan",
+        5: "OldWoman",
+        6: "YoungWoman",
+        7: "OldMan",
+        8: "YoungMan"
+    }
+
+
+    print()
+    print("====================================")
+    print("SELECTED SETTINGS")
+    print("====================================")
+    print(f"Music:        {music_names[music]}")
+    print(f"Environment:  {environment_names[environment]}")
+    print(f"Avatar:       {avatar_names[avatar]}")
+    print(f"Game Mode:    {game_mode}")
+    print("====================================")
+
+
+    return settings
 
 
 # =========================================================
@@ -71,6 +183,13 @@ def create_message(settings_data):
 
 
 # =========================================================
+# GET SETTINGS FROM USER
+# =========================================================
+
+settings = choose_settings()
+
+
+# =========================================================
 # START SERVER
 # =========================================================
 
@@ -92,6 +211,7 @@ server.bind(
 server.listen(5)
 
 
+print()
 print("====================================")
 print("TCP SETTINGS SERVER")
 print("====================================")

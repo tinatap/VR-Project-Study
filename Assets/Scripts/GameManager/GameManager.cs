@@ -1,4 +1,3 @@
-
 using TMPro;
 using UnityEngine;
 using System.Collections;
@@ -22,15 +21,12 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // ANALYTICS / TCP
+    // TCP
     // =====================================================
 
     [Header("TCP Event Stream")]
     [Tooltip("Assign the GameObject that contains TCP.cs.")]
     public TCP tcp;
-
-    [Header("Analytics")]
-    public AnalyticsLogger analyticsLogger;
 
     private int[] mazeAttemptCount = new int[11];
 
@@ -52,13 +48,7 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     private float startRoomDuration = 0f;
 
-    [Tooltip("Time from opening StartQuestionPanel until YES is pressed.")]
-    [SerializeField]
-    private float startQuestionPanelDuration = 0f;
-
     private float startRoomStartTime;
-    private float startQuestionPanelOpenTime;
-
     private bool startRoomResultSaved = false;
 
 
@@ -74,7 +64,6 @@ public class GameManager : MonoBehaviour
         new List<ExitConfirmRecord>();
 
     private float exitConfirmPanelOpenTime;
-
     private bool exitConfirmPanelCurrentlyOpen = false;
 
 
@@ -151,11 +140,8 @@ public class GameManager : MonoBehaviour
     [Header("Success UI")]
 
     public GameObject successPanel01;
-
     public TextMeshProUGUI successMessageText;
-
     public TextMeshProUGUI successCountdownText;
-
     public float successPanelDuration = 3f;
 
 
@@ -166,7 +152,6 @@ public class GameManager : MonoBehaviour
     [Header("Success Sound")]
 
     public AudioSource successAudioSource;
-
     public AudioClip successSound;
 
     [Range(0f, 1f)]
@@ -180,11 +165,8 @@ public class GameManager : MonoBehaviour
     [Header("Time Over UI")]
 
     public GameObject timeOverPanel;
-
     public TextMeshProUGUI timeOverMessageText;
-
     public TextMeshProUGUI restartCountdownText;
-
     public float restartDelay = 10f;
 
 
@@ -195,7 +177,6 @@ public class GameManager : MonoBehaviour
     [Header("Time Over Sound")]
 
     public AudioSource timeOverAudioSource;
-
     public AudioClip timeOverFailSound;
 
     [Range(0f, 1f)]
@@ -209,10 +190,9 @@ public class GameManager : MonoBehaviour
     [Header("Maze Timer UI")]
 
     public GameObject timerPanel;
-
     public TextMeshProUGUI timerText;
-
     public TextMeshProUGUI mazeNumberText;
+
 
     // =====================================================
     // EXIT UI
@@ -221,7 +201,6 @@ public class GameManager : MonoBehaviour
     [Header("Exit UI")]
 
     public GameObject exitButton;
-
     public GameObject exitConfirmPanel;
 
 
@@ -241,7 +220,6 @@ public class GameManager : MonoBehaviour
     [Header("Coin UI")]
 
     public GameObject coinCounterPanel;
-
     public TextMeshProUGUI coinCounterText;
 
 
@@ -252,9 +230,7 @@ public class GameManager : MonoBehaviour
     [Header("Final Game UI")]
 
     public GameObject finalGamePanel;
-
     public TextMeshProUGUI finalGameMessageText;
-
     public TextMeshProUGUI finalScoreText;
 
 
@@ -265,9 +241,7 @@ public class GameManager : MonoBehaviour
     [Header("Final Success UI")]
 
     public GameObject finalSuccessPanel;
-
     public TextMeshProUGUI finalSuccessMessageText;
-
     public TextMeshProUGUI finalSuccessScoreText;
 
 
@@ -278,7 +252,6 @@ public class GameManager : MonoBehaviour
     [Header("Final Game Sound")]
 
     public AudioSource finalGameAudioSource;
-
     public AudioClip finalGameSound;
 
     [Range(0f, 1f)]
@@ -292,7 +265,6 @@ public class GameManager : MonoBehaviour
     [Header("Final Success Sound")]
 
     public AudioSource finalSuccessAudioSource;
-
     public AudioClip finalSuccessSound;
 
     [Range(0f, 1f)]
@@ -362,6 +334,7 @@ public class GameManager : MonoBehaviour
     public float maze10Time = 80f;
     public int maze10Score = 100;
 
+
     // =====================================================
     // MAZE TIME ATTEMPT MULTIPLIERS
     // =====================================================
@@ -377,8 +350,15 @@ public class GameManager : MonoBehaviour
     [Tooltip("Time multiplier for 3rd attempt.")]
     public float attempt3TimeMultiplier = 0.6f;
 
-    [Tooltip("Time multiplier for 4th attempt and beyond.")]
-    public float attempt4PlusTimeMultiplier = 0.5f;
+    [Tooltip("Time multiplier for 4th attempt.")]
+    public float attempt4TimeMultiplier = 0.5f;
+
+    [Tooltip("Time multiplier for 5th attempt.")]
+    public float attempt5TimeMultiplier = 0.4f;
+
+    [Tooltip("Time multiplier for 6th attempt and beyond.")]
+    public float attempt6PlusTimeMultiplier = 0.3f;
+
 
     // =====================================================
     // PRIVATE VARIABLES
@@ -395,9 +375,7 @@ public class GameManager : MonoBehaviour
 
     private int totalCoins;
     private int collectedCoins;
-
     private int currentMazeScore;
-
     private int totalScore = 0;
 
     private int highestCompletedMaze = 0;
@@ -411,8 +389,9 @@ public class GameManager : MonoBehaviour
     private int finalSuccessRequestFrame = -1;
 
     private bool exitRequestedThisFrame = false;
-
     private bool exitFinishedGame = false;
+
+
     // =====================================================
     // ANALYTICS PUBLIC DATA
     // =====================================================
@@ -423,22 +402,13 @@ public class GameManager : MonoBehaviour
     {
         get
         {
-            if (currentMaze >= 0 &&
-                currentMaze < mazeAttemptCount.Length)
-            {
-                return mazeAttemptCount[currentMaze];
-            }
-
-            return 0;
+            return GetCurrentAttemptNumber();
         }
     }
 
     public int CollectedCoins => collectedCoins;
-
     public int TotalCoins => totalCoins;
-
     public int TotalScore => totalScore;
-
     public int HighestCompletedMaze => highestCompletedMaze;
 
     public float CurrentMazeElapsedTime
@@ -469,9 +439,6 @@ public class GameManager : MonoBehaviour
     // =====================================================
 
     public float StartRoomDuration => startRoomDuration;
-
-    public float StartQuestionPanelDuration =>
-        startQuestionPanelDuration;
 
 
     // =====================================================
@@ -529,38 +496,22 @@ public class GameManager : MonoBehaviour
         mazeVisitNumber = 0;
 
         startRoomDuration = 0f;
-        startQuestionPanelDuration = 0f;
-
         startRoomStartTime = Time.time;
-        startQuestionPanelOpenTime = 0f;
-
         startRoomResultSaved = false;
 
         exitConfirmPanelOpenTime = 0f;
         exitConfirmPanelCurrentlyOpen = false;
 
-        if (successPanel01 != null)
-            successPanel01.SetActive(false);
-
-        if (timeOverPanel != null)
-            timeOverPanel.SetActive(false);
-
-        if (finalGamePanel != null)
-            finalGamePanel.SetActive(false);
-
-        if (finalSuccessPanel != null)
-            finalSuccessPanel.SetActive(false);
-
-        if (exitConfirmPanel != null)
-            exitConfirmPanel.SetActive(false);
-
-        if (startQuestionPanel != null)
-            startQuestionPanel.SetActive(false);
+        SetPanelActive(successPanel01, false);
+        SetPanelActive(timeOverPanel, false);
+        SetPanelActive(finalGamePanel, false);
+        SetPanelActive(finalSuccessPanel, false);
+        SetPanelActive(exitConfirmPanel, false);
+        SetPanelActive(startQuestionPanel, false);
 
         SetAllMazesInactive();
 
         SetupCoinMode();
-
         SetMazeUI(false);
 
         Debug.Log(
@@ -597,23 +548,17 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogWarning(
                 "GameManager: TCP reference is not assigned/found.\n" +
-                "Event was not sent: " +
-                eventName
+                "Event was not sent: " + eventName
             );
         }
 
         Debug.Log(
             "========== TCP EVENT ==========\n" +
-            "Type: " +
-            eventType +
-            "\nEvent: " +
-            eventName +
-            "\nMessage: " +
-            eventMessage +
-            "\nMaze: " +
-            currentMaze +
-            "\nAttempt: " +
-            GetCurrentAttemptNumber() +
+            "Type: " + eventType +
+            "\nEvent: " + eventName +
+            "\nMessage: " + eventMessage +
+            "\nMaze: " + currentMaze +
+            "\nAttempt: " + GetCurrentAttemptNumber() +
             "\nMaze Time: " +
             CurrentMazeElapsedTime.ToString("F3") +
             " sec" +
@@ -633,10 +578,7 @@ public class GameManager : MonoBehaviour
         string panelEventName
     )
     {
-        if (panel == null)
-            return;
-
-        if (panel.activeSelf)
+        if (panel == null || panel.activeSelf)
             return;
 
         panel.SetActive(true);
@@ -644,12 +586,6 @@ public class GameManager : MonoBehaviour
         SendTCPEvent(
             panelEventName,
             "PANEL_OPENED"
-        );
-
-        Debug.Log(
-            "========== PANEL OPENED ==========\n" +
-            "Panel Event: " +
-            panelEventName
         );
     }
 
@@ -663,10 +599,7 @@ public class GameManager : MonoBehaviour
         string panelEventName
     )
     {
-        if (panel == null)
-            return;
-
-        if (!panel.activeSelf)
+        if (panel == null || !panel.activeSelf)
             return;
 
         panel.SetActive(false);
@@ -674,12 +607,6 @@ public class GameManager : MonoBehaviour
         SendTCPEvent(
             panelEventName,
             "PANEL_CLOSED"
-        );
-
-        Debug.Log(
-            "========== PANEL CLOSED ==========\n" +
-            "Panel Event: " +
-            panelEventName
         );
     }
 
@@ -690,14 +617,6 @@ public class GameManager : MonoBehaviour
 
     public void OpenStartQuestionPanel()
     {
-        if (startQuestionPanel == null)
-            return;
-
-        if (startQuestionPanel.activeSelf)
-            return;
-
-        startQuestionPanelOpenTime = Time.time;
-
         OpenPanel(
             startQuestionPanel,
             "PANEL_OPENED_START_QUESTION"
@@ -720,37 +639,19 @@ public class GameManager : MonoBehaviour
                 Time.time - startRoomStartTime
             );
 
-        if (startQuestionPanelOpenTime > 0f)
-        {
-            startQuestionPanelDuration =
-                Mathf.Max(
-                    0f,
-                    Time.time - startQuestionPanelOpenTime
-                );
-        }
-        else
-        {
-            startQuestionPanelDuration = 0f;
-        }
-
         startRoomResultSaved = true;
 
         SendTCPEvent(
             "START_ROOM_YES",
             "BUTTON_PRESSED",
             "StartRoomDuration=" +
-            startRoomDuration.ToString("F3") +
-            "; StartQuestionPanelDuration=" +
-            startQuestionPanelDuration.ToString("F3")
+            startRoomDuration.ToString("F3")
         );
 
         Debug.Log(
             "START_ROOM_YES registered immediately.\n" +
             "Start Room Duration: " +
             startRoomDuration.ToString("F3") +
-            " sec\n" +
-            "Start Question Panel Duration: " +
-            startQuestionPanelDuration.ToString("F3") +
             " sec"
         );
     }
@@ -765,10 +666,6 @@ public class GameManager : MonoBehaviour
         if (gameFinished)
             return;
 
-        // -------------------------------------------------
-        // GAME TIMER STARTS EXACTLY HERE
-        // -------------------------------------------------
-
         gameStartTime = Time.time;
 
         ClosePanel(
@@ -781,35 +678,23 @@ public class GameManager : MonoBehaviour
             "GAME_EVENT"
         );
 
-        // -------------------------------------------------
-        // RESET GAME STATE
-        // -------------------------------------------------
-
         currentMaze = 1;
 
         totalScore = 0;
-
         collectedCoins = 0;
-
         highestCompletedMaze = 0;
 
         stageCompleted = false;
-
         waitingForRestart = false;
-
         changingMaze = false;
-
         gameFinished = false;
 
         currentAttemptSaved = false;
-
         finalResultSaved = false;
         experimentSummarySent = false;
 
         mazeVisitHistory.Clear();
-
         exitConfirmHistory.Clear();
-
         mazeVisitNumber = 0;
 
         for (int i = 0; i < mazeAttemptCount.Length; i++)
@@ -819,13 +704,11 @@ public class GameManager : MonoBehaviour
 
         SetAllMazesInactive();
 
-        if (maze01 != null)
-            maze01.SetActive(true);
+        SetPanelActive(maze01, true);
 
         if (EnvironmentManager.Instance != null)
         {
-            EnvironmentManager.Instance
-                .ApplyDecorationsForMaze(0);
+            EnvironmentManager.Instance.ApplyDecorationsForMaze(0);
         }
 
         StartMaze(1);
@@ -836,13 +719,9 @@ public class GameManager : MonoBehaviour
             StopCoroutine(totalGameTimerCoroutine);
 
         totalGameTimerCoroutine =
-            StartCoroutine(
-                TotalGameTimer()
-            );
+            StartCoroutine(TotalGameTimer());
 
-        Debug.Log(
-            "Game started from Maze 1."
-        );
+        Debug.Log("Game started from Maze 1.");
     }
 
 
@@ -852,17 +731,14 @@ public class GameManager : MonoBehaviour
 
     public void OpenExitConfirmPanel()
     {
-        if (gameFinished)
+        if (gameFinished ||
+            exitConfirmPanel == null ||
+            exitConfirmPanel.activeSelf)
+        {
             return;
-
-        if (exitConfirmPanel == null)
-            return;
-
-        if (exitConfirmPanel.activeSelf)
-            return;
+        }
 
         exitConfirmPanelOpenTime = Time.time;
-
         exitConfirmPanelCurrentlyOpen = true;
 
         OpenPanel(
@@ -884,8 +760,8 @@ public class GameManager : MonoBehaviour
         exitRequestedThisFrame = true;
         exitFinishedGame = true;
 
-        // Capture the maze duration at the exact moment YES is pressed.
-        float exitMazeDuration = CurrentMazeElapsedTime;
+        float exitMazeDuration =
+            CurrentMazeElapsedTime;
 
         float panelDuration = 0f;
 
@@ -916,13 +792,6 @@ public class GameManager : MonoBehaviour
         ClosePanel(
             exitConfirmPanel,
             "PANEL_CLOSED_EXIT_CONFIRM"
-        );
-
-        Debug.Log(
-            "Exit YES selected.\n" +
-            "Exit Confirm Duration: " +
-            panelDuration.ToString("F2") +
-            " seconds"
         );
 
         if (!currentAttemptSaved)
@@ -1014,40 +883,14 @@ public class GameManager : MonoBehaviour
         record.interactionNumber =
             exitConfirmHistory.Count + 1;
 
-        record.mazeNumber =
-            currentMaze;
-
-        record.attemptNumber =
-            GetCurrentAttemptNumber();
-
-        record.result =
-            result;
-
-        record.durationSeconds =
-            duration;
-
+        record.mazeNumber = currentMaze;
+        record.attemptNumber = GetCurrentAttemptNumber();
+        record.result = result;
+        record.durationSeconds = duration;
         record.totalGameElapsedTime =
             TotalGameElapsedTime;
 
         exitConfirmHistory.Add(record);
-
-        Debug.Log(
-            "========== EXIT CONFIRM SAVED ==========\n" +
-            "Interaction: " +
-            record.interactionNumber +
-            "\nMaze: " +
-            record.mazeNumber +
-            "\nAttempt: " +
-            record.attemptNumber +
-            "\nResult: " +
-            record.result +
-            "\nDuration: " +
-            record.durationSeconds.ToString("F2") +
-            " sec" +
-            "\nTotal Game Time: " +
-            record.totalGameElapsedTime.ToString("F2") +
-            " sec"
-        );
     }
 
 
@@ -1073,11 +916,8 @@ public class GameManager : MonoBehaviour
 
     public void SetMazeUI(bool show)
     {
-        if (exitButton != null)
-            exitButton.SetActive(show);
-
-        if (timerPanel != null)
-            timerPanel.SetActive(show);
+        SetPanelActive(exitButton, show);
+        SetPanelActive(timerPanel, show);
 
         if (timerText != null)
             timerText.gameObject.SetActive(show);
@@ -1085,21 +925,14 @@ public class GameManager : MonoBehaviour
         if (mazeNumberText != null)
             mazeNumberText.gameObject.SetActive(show);
 
-        if (coinCounterPanel != null)
-        {
-            coinCounterPanel.SetActive(
-                show &&
-                scoreMode == ScoreMode.CoinsAndMazeScore
-            );
-        }
+        bool showCoins =
+            show &&
+            scoreMode == ScoreMode.CoinsAndMazeScore;
+
+        SetPanelActive(coinCounterPanel, showCoins);
 
         if (coinCounterText != null)
-        {
-            coinCounterText.gameObject.SetActive(
-                show &&
-                scoreMode == ScoreMode.CoinsAndMazeScore
-            );
-        }
+            coinCounterText.gameObject.SetActive(showCoins);
     }
 
 
@@ -1115,32 +948,22 @@ public class GameManager : MonoBehaviour
                 FindObjectsSortMode.None
             );
 
+        bool enableCoins =
+            scoreMode == ScoreMode.CoinsAndMazeScore;
+
         foreach (Coin coin in allCoins)
         {
-            if (coin == null)
-                continue;
-
-            coin.gameObject.SetActive(
-                scoreMode == ScoreMode.CoinsAndMazeScore
-            );
+            if (coin != null)
+                coin.gameObject.SetActive(enableCoins);
         }
 
-        if (scoreMode == ScoreMode.MazeScoreOnly)
-        {
-            if (coinCounterPanel != null)
-                coinCounterPanel.SetActive(false);
+        SetPanelActive(
+            coinCounterPanel,
+            enableCoins
+        );
 
-            if (coinCounterText != null)
-                coinCounterText.gameObject.SetActive(false);
-        }
-        else
-        {
-            if (coinCounterPanel != null)
-                coinCounterPanel.SetActive(true);
-
-            if (coinCounterText != null)
-                coinCounterText.gameObject.SetActive(true);
-        }
+        if (coinCounterText != null)
+            coinCounterText.gameObject.SetActive(enableCoins);
     }
 
 
@@ -1160,18 +983,20 @@ public class GameManager : MonoBehaviour
 
         currentAttemptSaved = false;
 
-        // Maze timer starts exactly here.
         mazeStartTime = Time.time;
 
         SetMazeSettings(mazeNumber);
 
         if (mazeNumberText != null)
         {
-            mazeNumberText.text = "Maze " + mazeNumber;
+            mazeNumberText.text =
+                "Maze " + mazeNumber;
+
             mazeNumberText.gameObject.SetActive(true);
         }
 
         collectedCoins = 0;
+
         ResetCoins();
 
         MovePlayer(
@@ -1267,55 +1092,73 @@ public class GameManager : MonoBehaviour
                 currentMazeTime = maze10Time;
                 currentMazeScore = maze10Score;
                 break;
+
+            default:
+                totalCoins = 0;
+                currentMazeTime = 0f;
+                currentMazeScore = 0;
+                break;
         }
 
-        // -------------------------------------------------
-        // APPLY TIME MULTIPLIER BASED ON ATTEMPT NUMBER
-        // -------------------------------------------------
+        int attemptNumber =
+            mazeAttemptCount[mazeNumber];
 
-        int attemptNumber = mazeAttemptCount[mazeNumber];
-
-        float timeMultiplier;
-
-        if (attemptNumber == 1)
-        {
-            timeMultiplier = attempt1TimeMultiplier;
-        }
-        else if (attemptNumber == 2)
-        {
-            timeMultiplier = attempt2TimeMultiplier;
-        }
-        else if (attemptNumber == 3)
-        {
-            timeMultiplier = attempt3TimeMultiplier;
-        }
-        else
-        {
-            timeMultiplier = attempt4PlusTimeMultiplier;
-        }
+        float timeMultiplier =
+            GetAttemptTimeMultiplier(attemptNumber);
 
         currentMazeTime *= timeMultiplier;
 
-        // -------------------------------------------------
-        // COIN MODE
-        // -------------------------------------------------
-
         if (scoreMode == ScoreMode.MazeScoreOnly)
-        {
             totalCoins = 0;
-        }
 
         Debug.Log(
             "========== MAZE SETTINGS ==========\n" +
             "Maze: " + mazeNumber +
             "\nAttempt: " + attemptNumber +
-            "\nBase Time: " + GetBaseMazeTime(mazeNumber).ToString("F2") +
+            "\nBase Time: " +
+            GetBaseMazeTime(mazeNumber).ToString("F2") +
             " sec" +
-            "\nTime Multiplier: " + timeMultiplier.ToString("F2") +
-            "\nFinal Maze Time: " + currentMazeTime.ToString("F2") +
+            "\nTime Multiplier: " +
+            timeMultiplier.ToString("F2") +
+            "\nFinal Maze Time: " +
+            currentMazeTime.ToString("F2") +
             " sec"
         );
     }
+
+
+    // =====================================================
+    // GET ATTEMPT TIME MULTIPLIER
+    // =====================================================
+
+    private float GetAttemptTimeMultiplier(int attemptNumber)
+    {
+        switch (attemptNumber)
+        {
+            case 1:
+                return attempt1TimeMultiplier;
+
+            case 2:
+                return attempt2TimeMultiplier;
+
+            case 3:
+                return attempt3TimeMultiplier;
+
+            case 4:
+                return attempt4TimeMultiplier;
+
+            case 5:
+                return attempt5TimeMultiplier;
+
+            default:
+                return attempt6PlusTimeMultiplier;
+        }
+    }
+
+
+    // =====================================================
+    // GET BASE MAZE TIME
+    // =====================================================
 
     private float GetBaseMazeTime(int mazeNumber)
     {
@@ -1335,6 +1178,7 @@ public class GameManager : MonoBehaviour
 
         return 0f;
     }
+
 
     // =====================================================
     // GET SPAWN POINT
@@ -1439,6 +1283,7 @@ public class GameManager : MonoBehaviour
             characterController.enabled = true;
     }
 
+
     // =====================================================
     // COLLECT COIN
     // =====================================================
@@ -1459,10 +1304,7 @@ public class GameManager : MonoBehaviour
         if (collectedCoins >= totalCoins)
             return;
 
-        // Coins collected in the current maze
         collectedCoins++;
-
-        // Total score = ALL coins collected during the entire game
         totalScore++;
 
         UpdateCoinText();
@@ -1487,22 +1329,20 @@ public class GameManager : MonoBehaviour
     {
         if (scoreMode == ScoreMode.MazeScoreOnly)
         {
-            if (coinCounterPanel != null)
-                coinCounterPanel.SetActive(false);
+            SetPanelActive(coinCounterPanel, false);
+
+            if (coinCounterText != null)
+                coinCounterText.gameObject.SetActive(false);
 
             return;
         }
 
-        if (coinCounterPanel != null)
-            coinCounterPanel.SetActive(true);
+        SetPanelActive(coinCounterPanel, true);
 
         if (coinCounterText != null)
         {
             coinCounterText.gameObject.SetActive(true);
-
-            coinCounterText.text =
-    "       " +
-    totalScore;
+            coinCounterText.text = "       " + totalScore;
         }
     }
 
@@ -1514,16 +1354,13 @@ public class GameManager : MonoBehaviour
     private void StartMazeTimer()
     {
         StopMazeTimer();
-
-        timerCoroutine =
-            StartCoroutine(MazeTimer());
+        timerCoroutine = StartCoroutine(MazeTimer());
     }
 
 
     private IEnumerator MazeTimer()
     {
-        float remainingTime =
-            currentMazeTime;
+        float remainingTime = currentMazeTime;
 
         while (remainingTime > 0f)
         {
@@ -1535,18 +1372,14 @@ public class GameManager : MonoBehaviour
                 yield break;
             }
 
-            UpdateTimerText(
-                remainingTime
-            );
+            UpdateTimerText(remainingTime);
 
             yield return null;
 
-            remainingTime -=
-                Time.deltaTime;
+            remainingTime -= Time.deltaTime;
         }
 
         UpdateTimerText(0f);
-
         TimerFinished();
     }
 
@@ -1560,12 +1393,9 @@ public class GameManager : MonoBehaviour
         if (timerText == null)
             return;
 
-        int seconds =
-            Mathf.CeilToInt(time);
-
         timerText.text =
             "Time: " +
-            seconds;
+            Mathf.CeilToInt(time);
     }
 
 
@@ -1575,8 +1405,7 @@ public class GameManager : MonoBehaviour
 
     private void ShowMainTimer()
     {
-        if (timerPanel != null)
-            timerPanel.SetActive(true);
+        SetPanelActive(timerPanel, true);
 
         if (timerText != null)
             timerText.gameObject.SetActive(true);
@@ -1589,8 +1418,7 @@ public class GameManager : MonoBehaviour
 
     private void HideMainTimer()
     {
-        if (timerPanel != null)
-            timerPanel.SetActive(false);
+        SetPanelActive(timerPanel, false);
 
         if (timerText != null)
             timerText.gameObject.SetActive(false);
@@ -1606,7 +1434,6 @@ public class GameManager : MonoBehaviour
         if (timerCoroutine != null)
         {
             StopCoroutine(timerCoroutine);
-
             timerCoroutine = null;
         }
     }
@@ -1632,36 +1459,24 @@ public class GameManager : MonoBehaviour
                 "Cannot save maze attempt. Invalid maze number: " +
                 currentMaze
             );
+
             return;
         }
 
         int mazeNumberAtEnd = currentMaze;
-        int attemptNumberAtEnd = mazeAttemptCount[currentMaze];
+        int attemptNumberAtEnd =
+            mazeAttemptCount[currentMaze];
+
         int coinsCollectedAtEnd = collectedCoins;
         int totalCoinsAtEnd = totalCoins;
-        float attemptTime = Mathf.Max(0f, duration);
 
-        if (analyticsLogger != null)
-        {
-            analyticsLogger.SaveMazeAttempt(
-                mazeNumberAtEnd,
-                attemptNumberAtEnd,
-                result,
-                coinsCollectedAtEnd,
-                totalCoinsAtEnd,
-                attemptTime
-            );
-        }
-        else
-        {
-            Debug.LogWarning(
-                "GameManager: Analytics Logger is not assigned!"
-            );
-        }
+        float attemptTime =
+            Mathf.Max(0f, duration);
 
         mazeVisitNumber++;
 
-        MazeVisitRecord record = new MazeVisitRecord();
+        MazeVisitRecord record =
+            new MazeVisitRecord();
 
         record.visitNumber = mazeVisitNumber;
         record.mazeNumber = mazeNumberAtEnd;
@@ -1671,11 +1486,13 @@ public class GameManager : MonoBehaviour
         record.totalCoins = totalCoinsAtEnd;
         record.result = result;
         record.endReason = endReason;
-        record.totalGameElapsedTime = TotalGameElapsedTime;
-        record.startRoomDuration = startRoomDuration;
-        record.startQuestionPanelDuration = startQuestionPanelDuration;
+        record.totalGameElapsedTime =
+            TotalGameElapsedTime;
+        record.startRoomDuration =
+            startRoomDuration;
 
         mazeVisitHistory.Add(record);
+
         currentAttemptSaved = true;
 
         Debug.Log(
@@ -1683,11 +1500,20 @@ public class GameManager : MonoBehaviour
             "Visit Number: " + record.visitNumber +
             "\nMaze: " + record.mazeNumber +
             "\nAttempt: " + record.attemptNumber +
-            "\nDuration: " + record.durationSeconds.ToString("F3") + " seconds" +
-            "\nCoins: " + record.collectedCoins + "/" + record.totalCoins +
-            "\nResult: " + record.result +
-            "\nEnd Reason: " + record.endReason +
-            "\nTotal Game Time: " + record.totalGameElapsedTime.ToString("F3") + " seconds"
+            "\nDuration: " +
+            record.durationSeconds.ToString("F3") +
+            " seconds" +
+            "\nCoins: " +
+            record.collectedCoins +
+            "/" +
+            record.totalCoins +
+            "\nResult: " +
+            record.result +
+            "\nEnd Reason: " +
+            record.endReason +
+            "\nTotal Game Time: " +
+            record.totalGameElapsedTime.ToString("F3") +
+            " seconds"
         );
     }
 
@@ -1723,13 +1549,9 @@ public class GameManager : MonoBehaviour
             collectedCoins
         );
 
-
-
-
         SetAllMazesInactive();
 
-        if (maze01 != null)
-            maze01.SetActive(true);
+        SetPanelActive(maze01, true);
 
         if (EnvironmentManager.Instance != null)
         {
@@ -1737,16 +1559,12 @@ public class GameManager : MonoBehaviour
                 .ApplyDecorationsForMaze(0);
         }
 
-        // IMPORTANT: keep the original failed maze number until its
-        // visit record is saved. Otherwise the record would become Maze 1.
+        // Keep the failed maze number until its record is saved.
         SetMazeSettings(currentMaze);
 
-        MovePlayer(
-            maze01Spawn
-        );
+        MovePlayer(maze01Spawn);
 
         UpdateCoinText();
-
         HideMainTimer();
 
         OpenPanel(
@@ -1761,6 +1579,7 @@ public class GameManager : MonoBehaviour
         );
 
         currentMaze = 1;
+
         SetMazeSettings(1);
 
         PlayTimeOverSound();
@@ -1778,11 +1597,11 @@ public class GameManager : MonoBehaviour
 
     private void PlayTimeOverSound()
     {
-        if (timeOverAudioSource == null)
+        if (timeOverAudioSource == null ||
+            timeOverFailSound == null)
+        {
             return;
-
-        if (timeOverFailSound == null)
-            return;
+        }
 
         timeOverAudioSource.PlayOneShot(
             timeOverFailSound,
@@ -1797,28 +1616,21 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator RestartFromMaze01Countdown()
     {
-        float remainingTime =
-            restartDelay;
+        float remainingTime = restartDelay;
 
         while (remainingTime > 0f)
         {
             if (restartCountdownText != null)
             {
-                int seconds =
-                    Mathf.CeilToInt(
-                        remainingTime
-                    );
-
                 restartCountdownText.text =
                     "Restarting from Maze 1 in " +
-                    seconds +
+                    Mathf.CeilToInt(remainingTime) +
                     " seconds";
             }
 
             yield return null;
 
-            remainingTime -=
-                Time.deltaTime;
+            remainingTime -= Time.deltaTime;
         }
 
         RestartFromMaze01();
@@ -1844,8 +1656,7 @@ public class GameManager : MonoBehaviour
 
         SetAllMazesInactive();
 
-        if (maze01 != null)
-            maze01.SetActive(true);
+        SetPanelActive(maze01, true);
 
         if (EnvironmentManager.Instance != null)
         {
@@ -1857,16 +1668,12 @@ public class GameManager : MonoBehaviour
 
         SetMazeSettings(1);
 
-        MovePlayer(
-            maze01Spawn
-        );
+        MovePlayer(maze01Spawn);
 
         ResetAllExitTriggers();
-
         ResetCoins();
 
         ShowMainTimer();
-
         StartMaze(1);
 
         Debug.Log(
@@ -1893,39 +1700,33 @@ public class GameManager : MonoBehaviour
         changingMaze = true;
 
         StopMazeTimer();
-
         HideMainTimer();
 
-        // Score of this maze = coins collected in this maze
         int mazeResultScore = collectedCoins;
 
-        // ثبت بالاترین Mazeای که با موفقیت کامل شده
         if (currentMaze > highestCompletedMaze)
         {
             highestCompletedMaze = currentMaze;
         }
 
-        // totalScore has already been increased
-        // one-by-one when coins were collected.
-
         float successfulMazeTime =
             CurrentMazeElapsedTime;
 
         SendTCPEvent(
-       "MAZE_SUCCESS",
-       "GAME_EVENT",
-       "Result=SUCCESS" +
-       "; MazeDuration=" +
-       successfulMazeTime.ToString("F3") +
-       "; CollectedCoins=" +
-       collectedCoins +
-       "; MazeScore=" +
-       mazeResultScore +
-       "; TotalScore=" +
-       totalScore +
-       "; HighestCompletedMaze=" +
-       highestCompletedMaze
-   );
+            "MAZE_SUCCESS",
+            "GAME_EVENT",
+            "Result=SUCCESS" +
+            "; MazeDuration=" +
+            successfulMazeTime.ToString("F3") +
+            "; CollectedCoins=" +
+            collectedCoins +
+            "; MazeScore=" +
+            mazeResultScore +
+            "; TotalScore=" +
+            totalScore +
+            "; HighestCompletedMaze=" +
+            highestCompletedMaze
+        );
 
         PlaySuccessSound();
 
@@ -1948,17 +1749,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
     // =====================================================
     // PLAY SUCCESS SOUND
     // =====================================================
 
     private void PlaySuccessSound()
     {
-        if (successAudioSource == null)
+        if (successAudioSource == null ||
+            successSound == null)
+        {
             return;
-
-        if (successSound == null)
-            return;
+        }
 
         successAudioSource.PlayOneShot(
             successSound,
@@ -1999,20 +1801,14 @@ public class GameManager : MonoBehaviour
         {
             if (successCountdownText != null)
             {
-                int seconds =
-                    Mathf.CeilToInt(
-                        remainingTime
-                    );
-
                 successCountdownText.text =
                     "Next maze starts in: " +
-                    seconds;
+                    Mathf.CeilToInt(remainingTime);
             }
 
             yield return null;
 
-            remainingTime -=
-                Time.deltaTime;
+            remainingTime -= Time.deltaTime;
         }
 
         ClosePanel(
@@ -2042,9 +1838,7 @@ public class GameManager : MonoBehaviour
                 );
         }
 
-        StartMaze(
-            currentMaze
-        );
+        StartMaze(currentMaze);
 
         successCoroutine = null;
     }
@@ -2056,17 +1850,12 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator ShowFinalSuccess()
     {
-
-
         if (musicManager != null)
             musicManager.StopBackgroundMusic();
 
         if (totalGameTimerCoroutine != null)
         {
-            StopCoroutine(
-                totalGameTimerCoroutine
-            );
-
+            StopCoroutine(totalGameTimerCoroutine);
             totalGameTimerCoroutine = null;
         }
 
@@ -2105,33 +1894,19 @@ public class GameManager : MonoBehaviour
             finalTime
         );
 
-        if (!finalResultSaved)
-        {
-            finalResultSaved = true;
-
-            if (analyticsLogger != null)
-            {
-                analyticsLogger.SaveFinalResult(
-                    "SUCCESS - ALL MAZES COMPLETED",
-                    finalTime
-                );
-            }
-        }
-
-        // Send before freezing time.
         SendTCPEvent(
-    "GAME_FINISHED_SUCCESS",
-    "GAME_EVENT",
-    "FinalResult=SUCCESS - ALL MAZES COMPLETED" +
-    "; TotalGameTime=" +
-    finalTime.ToString("F3") +
-    "; TotalScore=" +
-    totalScore +
-    "; TotalCoinsCollected=" +
-    totalScore +
-    "; HighestCompletedMaze=" +
-    highestCompletedMaze
-);
+            "GAME_FINISHED_SUCCESS",
+            "GAME_EVENT",
+            "FinalResult=SUCCESS - ALL MAZES COMPLETED" +
+            "; TotalGameTime=" +
+            finalTime.ToString("F3") +
+            "; TotalScore=" +
+            totalScore +
+            "; TotalCoinsCollected=" +
+            totalScore +
+            "; HighestCompletedMaze=" +
+            highestCompletedMaze
+        );
 
         gameFinished = true;
 
@@ -2147,8 +1922,7 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator TotalGameTimer()
     {
-        float remainingTime =
-            totalGameTime;
+        float remainingTime = totalGameTime;
 
         while (remainingTime > 0f)
         {
@@ -2157,22 +1931,16 @@ public class GameManager : MonoBehaviour
 
             yield return null;
 
-            remainingTime -=
-                Time.deltaTime;
+            remainingTime -= Time.deltaTime;
         }
 
-        // -------------------------------------------------
-        // MAZE 10 SUCCESS HAS PRIORITY IF IT HAPPENED
-        // IN THE SAME FRAME
-        // -------------------------------------------------
-
+        // Final Maze Success has priority.
         if (finalSuccessRequestFrame == Time.frameCount)
         {
             Debug.Log(
                 "============================================\n" +
                 "SIMULTANEOUS FINAL EVENTS\n" +
                 "Maze 10 SUCCESS and TOTAL GAME TIME OVER\n" +
-                "occurred in the same frame.\n" +
                 "FINAL SUCCESS has priority.\n" +
                 "============================================"
             );
@@ -2180,11 +1948,7 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-
-        // -------------------------------------------------
-        // EXIT HAS PRIORITY IF IT HAPPENS IN SAME FRAME
-        // -------------------------------------------------
-
+        // Exit has priority if it happens in the same frame.
         if (exitRequestedThisFrame)
         {
             Debug.Log(
@@ -2195,17 +1959,8 @@ public class GameManager : MonoBehaviour
             );
 
             exitRequestedThisFrame = false;
-
             yield break;
         }
-
-        // -------------------------------------------------
-        // NORMAL TOTAL GAME TIME OVER
-        // -------------------------------------------------
-        // -------------------------------------------------
-        // EXIT HAS ABSOLUTE PRIORITY
-        // EVEN IF TOTAL GAME TIME ENDED
-        // -------------------------------------------------
 
         if (exitFinishedGame)
         {
@@ -2218,12 +1973,9 @@ public class GameManager : MonoBehaviour
 
             yield break;
         }
+
         if (gameFinished)
             yield break;
-
-        // -------------------------------------------------
-        // CLOSE ANY INTERMEDIATE PANELS
-        // -------------------------------------------------
 
         ClosePanel(
             successPanel01,
@@ -2236,51 +1988,31 @@ public class GameManager : MonoBehaviour
         );
 
         ClosePanel(
-    exitConfirmPanel,
-    "PANEL_CLOSED_EXIT_CONFIRM_TOTAL_TIME_OVER"
-);
+            exitConfirmPanel,
+            "PANEL_CLOSED_EXIT_CONFIRM_TOTAL_TIME_OVER"
+        );
 
         exitConfirmPanelCurrentlyOpen = false;
         exitConfirmPanelOpenTime = 0f;
 
-        // -------------------------------------------------
-        // STOP MAZE-LEVEL PROCESSES
-        // -------------------------------------------------
-
         StopMazeTimer();
 
-        if (restartCoroutine != null)
-        {
-            StopCoroutine(
-                restartCoroutine
-            );
+        StopCoroutineIfRunning(
+            ref restartCoroutine
+        );
 
-            restartCoroutine = null;
-        }
-
-        if (successCoroutine != null)
-        {
-            StopCoroutine(
-                successCoroutine
-            );
-
-            successCoroutine = null;
-        }
+        StopCoroutineIfRunning(
+            ref successCoroutine
+        );
 
         stageCompleted = false;
         waitingForRestart = false;
         changingMaze = false;
 
-        // -------------------------------------------------
-        // FINISH ENTIRE GAME
-        // -------------------------------------------------
-
         FinishEntireGame(
             "FAILED - TOTAL TIME OVER",
             totalGameTime
         );
-
-
     }
 
 
@@ -2296,12 +2028,10 @@ public class GameManager : MonoBehaviour
         exitRequestedThisFrame = true;
         exitFinishedGame = true;
 
-        // Direct calls to ExitGame are also handled safely.
-        // Normally ConfirmExitYes() saves the maze first, at the exact
-        // moment YES is pressed.
         if (!currentAttemptSaved)
         {
-            float exitMazeTime = CurrentMazeElapsedTime;
+            float exitMazeTime =
+                CurrentMazeElapsedTime;
 
             SaveCurrentMazeAttempt(
                 "FAILED - EXIT",
@@ -2320,11 +2050,8 @@ public class GameManager : MonoBehaviour
             );
         }
 
-
-
         float realTotalGameTime =
             Time.time - gameStartTime;
-
 
         FinishEntireGame(
             "FAILED - EXIT",
@@ -2344,10 +2071,6 @@ public class GameManager : MonoBehaviour
     {
         if (gameFinished)
             return;
-
-        // -------------------------------------------------
-        // SAME-FRAME FINAL SUCCESS PRIORITY
-        // -------------------------------------------------
 
         if (finalSuccessRequestFrame == Time.frameCount)
         {
@@ -2372,32 +2095,17 @@ public class GameManager : MonoBehaviour
 
         StopMazeTimer();
 
-        if (restartCoroutine != null)
-        {
-            StopCoroutine(
-                restartCoroutine
-            );
+        StopCoroutineIfRunning(
+            ref restartCoroutine
+        );
 
-            restartCoroutine = null;
-        }
+        StopCoroutineIfRunning(
+            ref successCoroutine
+        );
 
-        if (successCoroutine != null)
-        {
-            StopCoroutine(
-                successCoroutine
-            );
-
-            successCoroutine = null;
-        }
-
-        if (totalGameTimerCoroutine != null)
-        {
-            StopCoroutine(
-                totalGameTimerCoroutine
-            );
-
-            totalGameTimerCoroutine = null;
-        }
+        StopCoroutineIfRunning(
+            ref totalGameTimerCoroutine
+        );
 
         ClosePanel(
             successPanel01,
@@ -2410,28 +2118,14 @@ public class GameManager : MonoBehaviour
         );
 
         ClosePanel(
-    exitConfirmPanel,
-    "PANEL_CLOSED_EXIT_CONFIRM"
-);
+            exitConfirmPanel,
+            "PANEL_CLOSED_EXIT_CONFIRM"
+        );
 
         exitConfirmPanelCurrentlyOpen = false;
         exitConfirmPanelOpenTime = 0f;
 
-
         HideMainTimer();
-
-        if (!finalResultSaved)
-        {
-            finalResultSaved = true;
-
-            if (analyticsLogger != null)
-            {
-                analyticsLogger.SaveFinalResult(
-                    finalResult,
-                    totalGameTimeUsed
-                );
-            }
-        }
 
         OpenPanel(
             finalGamePanel,
@@ -2466,27 +2160,23 @@ public class GameManager : MonoBehaviour
         }
 
         PrintMazeVisitHistory();
-
         PrintExitConfirmHistory();
-
         PrintStartRoomTiming();
 
-        // IMPORTANT:
-        // Send BEFORE Time.timeScale = 0.
         SendTCPEvent(
-       "GAME_FINISHED_FAILED",
-       "GAME_EVENT",
-       "FinalResult=" +
-       finalResult +
-       "; TotalGameTime=" +
-       totalGameTimeUsed.ToString("F3") +
-       "; TotalScore=" +
-       totalScore +
-       "; TotalCoinsCollected=" +
-       totalScore +
-       "; HighestCompletedMaze=" +
-       highestCompletedMaze
-   );
+            "GAME_FINISHED_FAILED",
+            "GAME_EVENT",
+            "FinalResult=" +
+            finalResult +
+            "; TotalGameTime=" +
+            totalGameTimeUsed.ToString("F3") +
+            "; TotalScore=" +
+            totalScore +
+            "; TotalCoinsCollected=" +
+            totalScore +
+            "; HighestCompletedMaze=" +
+            highestCompletedMaze
+        );
 
         Time.timeScale = 0f;
     }
@@ -2510,8 +2200,10 @@ public class GameManager : MonoBehaviour
         if (tcp == null)
         {
             Debug.LogError(
-                "GameManager: TCP not found. Experiment summary was NOT sent."
+                "GameManager: TCP not found. " +
+                "Experiment summary was NOT sent."
             );
+
             return;
         }
 
@@ -2523,7 +2215,6 @@ public class GameManager : MonoBehaviour
             totalScore,
             highestCompletedMaze,
             startRoomDuration,
-            startQuestionPanelDuration,
             mazeVisitHistory
         );
 
@@ -2531,10 +2222,14 @@ public class GameManager : MonoBehaviour
             "============================================\n" +
             "EXPERIMENT SUMMARY REQUESTED\n" +
             "Final Result: " + finalResult +
-            "\nTotal Game Time: " + totalGameTimeUsed.ToString("F3") +
-            "\nFinal Score: " + totalScore +
-            "\nHighest Completed Maze: " + highestCompletedMaze +
-            "\nMaze Visits: " + mazeVisitHistory.Count +
+            "\nTotal Game Time: " +
+            totalGameTimeUsed.ToString("F3") +
+            "\nFinal Score: " +
+            totalScore +
+            "\nHighest Completed Maze: " +
+            highestCompletedMaze +
+            "\nMaze Visits: " +
+            mazeVisitHistory.Count +
             "\n============================================"
         );
     }
@@ -2552,9 +2247,6 @@ public class GameManager : MonoBehaviour
             "============================================\n" +
             "Start Room Duration: " +
             startRoomDuration.ToString("F2") +
-            " sec\n" +
-            "Start Question Panel Duration: " +
-            startQuestionPanelDuration.ToString("F2") +
             " sec\n" +
             "============================================"
         );
@@ -2575,8 +2267,7 @@ public class GameManager : MonoBehaviour
             "\n============================================"
         );
 
-        foreach (MazeVisitRecord record
-                 in mazeVisitHistory)
+        foreach (MazeVisitRecord record in mazeVisitHistory)
         {
             Debug.Log(
                 "Visit #" +
@@ -2613,8 +2304,7 @@ public class GameManager : MonoBehaviour
             "\n============================================"
         );
 
-        foreach (ExitConfirmRecord record
-                 in exitConfirmHistory)
+        foreach (ExitConfirmRecord record in exitConfirmHistory)
         {
             Debug.Log(
                 "Interaction #" +
@@ -2666,11 +2356,11 @@ public class GameManager : MonoBehaviour
 
     private void PlayFinalGameSound()
     {
-        if (finalGameAudioSource == null)
+        if (finalGameAudioSource == null ||
+            finalGameSound == null)
+        {
             return;
-
-        if (finalGameSound == null)
-            return;
+        }
 
         finalGameAudioSource.PlayOneShot(
             finalGameSound,
@@ -2691,28 +2381,28 @@ public class GameManager : MonoBehaviour
                 FindObjectsSortMode.None
             );
 
-        foreach (ExitTrigger exit in exits)
-        {
-            FieldInfo field =
-                typeof(ExitTrigger)
-                .GetField(
-                    "completed",
-                    BindingFlags.NonPublic |
-                    BindingFlags.Instance
-                );
+        FieldInfo completedField =
+            typeof(ExitTrigger).GetField(
+                "completed",
+                BindingFlags.NonPublic |
+                BindingFlags.Instance
+            );
 
-            if (field != null)
+        if (completedField != null)
+        {
+            foreach (ExitTrigger exit in exits)
             {
-                field.SetValue(
-                    exit,
-                    false
-                );
+                if (exit != null)
+                {
+                    completedField.SetValue(
+                        exit,
+                        false
+                    );
+                }
             }
         }
 
-        Debug.Log(
-            "All ExitTriggers reset."
-        );
+        Debug.Log("All ExitTriggers reset.");
     }
 
 
@@ -2722,11 +2412,11 @@ public class GameManager : MonoBehaviour
 
     private void PlayFinalSuccessSound()
     {
-        if (finalSuccessAudioSource == null)
+        if (finalSuccessAudioSource == null ||
+            finalSuccessSound == null)
+        {
             return;
-
-        if (finalSuccessSound == null)
-            return;
+        }
 
         finalSuccessAudioSource.PlayOneShot(
             finalSuccessSound,
@@ -2741,16 +2431,10 @@ public class GameManager : MonoBehaviour
 
     public void SetGameMode(bool useCoins)
     {
-        if (useCoins)
-        {
-            scoreMode =
-                ScoreMode.CoinsAndMazeScore;
-        }
-        else
-        {
-            scoreMode =
-                ScoreMode.MazeScoreOnly;
-        }
+        scoreMode =
+            useCoins
+                ? ScoreMode.CoinsAndMazeScore
+                : ScoreMode.MazeScoreOnly;
 
         Debug.Log(
             "Game Mode changed. Use Coins = " +
@@ -2805,6 +2489,39 @@ public class GameManager : MonoBehaviour
             "PANEL_CLOSED"
         );
     }
+
+
+    // =====================================================
+    // SET PANEL ACTIVE
+    // =====================================================
+
+    private void SetPanelActive(
+        GameObject panel,
+        bool active
+    )
+    {
+        if (panel != null &&
+            panel.activeSelf != active)
+        {
+            panel.SetActive(active);
+        }
+    }
+
+
+    // =====================================================
+    // STOP COROUTINE IF RUNNING
+    // =====================================================
+
+    private void StopCoroutineIfRunning(
+        ref Coroutine coroutine
+    )
+    {
+        if (coroutine == null)
+            return;
+
+        StopCoroutine(coroutine);
+        coroutine = null;
+    }
 }
 
 
@@ -2816,26 +2533,19 @@ public class GameManager : MonoBehaviour
 public class MazeVisitRecord
 {
     public int visitNumber;
-
     public int mazeNumber;
-
     public int attemptNumber;
 
     public float durationSeconds;
 
     public int collectedCoins;
-
     public int totalCoins;
 
     public string result;
-
     public string endReason;
 
     public float totalGameElapsedTime;
-
     public float startRoomDuration;
-
-    public float startQuestionPanelDuration;
 }
 
 
@@ -2849,13 +2559,10 @@ public class ExitConfirmRecord
     public int interactionNumber;
 
     public int mazeNumber;
-
     public int attemptNumber;
 
     public string result;
 
     public float durationSeconds;
-
     public float totalGameElapsedTime;
 }
-

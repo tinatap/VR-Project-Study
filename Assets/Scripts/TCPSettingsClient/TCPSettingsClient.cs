@@ -1,4 +1,3 @@
-
 using System;
 using System.Net.Sockets;
 using System.Text;
@@ -28,11 +27,8 @@ public class TCPSettingsClient : MonoBehaviour
     [Header("References")]
 
     public EnvironmentManager environmentManager;
-
     public MusicManager musicManager;
-
     public GameManager gameManager;
-
     public AvatarManager avatarManager;
 
 
@@ -41,12 +37,13 @@ public class TCPSettingsClient : MonoBehaviour
     // =====================================================
 
     private TcpClient client;
-
     private NetworkStream networkStream;
 
-    private bool connected = false;
+    private bool connected;
+    private bool shuttingDown;
 
-    private bool shuttingDown = false;
+    private const int LengthHeaderSize = 4;
+    private const int MaxMessageLength = 100000;
 
 
     // =====================================================
@@ -59,47 +56,29 @@ public class TCPSettingsClient : MonoBehaviour
         {
             client = new TcpClient();
 
-
             await client.ConnectAsync(
                 pcIPAddress,
                 port
             );
 
-
             if (shuttingDown)
                 return;
 
-
-            networkStream =
-                client.GetStream();
-
-
+            networkStream = client.GetStream();
             connected = true;
 
-
             Debug.Log(
+                "====================================\n" +
+                "SETTINGS TCP CONNECTED\n" +
+                "Waiting for settings from laptop...\n" +
                 "===================================="
             );
-
-            Debug.Log(
-                "SETTINGS TCP CONNECTED"
-            );
-
-            Debug.Log(
-                "Waiting for settings from laptop..."
-            );
-
-            Debug.Log(
-                "===================================="
-            );
-
 
             await ReceiveSettings();
         }
         catch (Exception ex)
         {
             connected = false;
-
 
             if (!shuttingDown)
             {
@@ -118,42 +97,11 @@ public class TCPSettingsClient : MonoBehaviour
 
     private async void Start()
     {
-        // -------------------------------------------------
-        // Find references automatically
-        // -------------------------------------------------
-
-        if (environmentManager == null)
-        {
-            environmentManager =
-                FindFirstObjectByType<EnvironmentManager>();
-        }
-
-
-        if (musicManager == null)
-        {
-            musicManager =
-                FindFirstObjectByType<MusicManager>();
-        }
-
-
-        if (gameManager == null)
-        {
-            gameManager =
-                FindFirstObjectByType<GameManager>();
-        }
-
-
-        if (avatarManager == null)
-        {
-            avatarManager =
-                FindFirstObjectByType<AvatarManager>();
-        }
-
+        FindReferences();
 
         Debug.Log(
             "TCPSettingsClient started."
         );
-
 
         Debug.Log(
             "Connecting to settings server: " +
@@ -162,8 +110,39 @@ public class TCPSettingsClient : MonoBehaviour
             port
         );
 
-
         await ConnectToServer();
+    }
+
+
+    // =====================================================
+    // FIND REFERENCES
+    // =====================================================
+
+    private void FindReferences()
+    {
+        if (environmentManager == null)
+        {
+            environmentManager =
+                FindFirstObjectByType<EnvironmentManager>();
+        }
+
+        if (musicManager == null)
+        {
+            musicManager =
+                FindFirstObjectByType<MusicManager>();
+        }
+
+        if (gameManager == null)
+        {
+            gameManager =
+                FindFirstObjectByType<GameManager>();
+        }
+
+        if (avatarManager == null)
+        {
+            avatarManager =
+                FindFirstObjectByType<AvatarManager>();
+        }
     }
 
 
@@ -188,16 +167,12 @@ public class TCPSettingsClient : MonoBehaviour
                 byte[] lengthBytes =
                     await ReceiveExact(
                         networkStream,
-                        4
+                        LengthHeaderSize
                     );
-
 
                 if (lengthBytes == null)
                 {
-                    Debug.Log(
-                        "Settings server disconnected."
-                    );
-
+                    HandleServerDisconnect();
                     break;
                 }
 
@@ -207,10 +182,7 @@ public class TCPSettingsClient : MonoBehaviour
                 // -----------------------------------------
 
                 int messageLength =
-                    (lengthBytes[0] << 24) |
-                    (lengthBytes[1] << 16) |
-                    (lengthBytes[2] << 8) |
-                    lengthBytes[3];
+                    ReadBigEndianInt32(lengthBytes);
 
 
                 // -----------------------------------------
@@ -219,7 +191,7 @@ public class TCPSettingsClient : MonoBehaviour
 
                 if (
                     messageLength <= 0 ||
-                    messageLength > 100000
+                    messageLength > MaxMessageLength
                 )
                 {
                     Debug.LogError(
@@ -241,10 +213,8 @@ public class TCPSettingsClient : MonoBehaviour
                         messageLength
                     );
 
-
                 if (jsonBytes == null)
                     break;
-
 
                 string json =
                     Encoding.UTF8.GetString(
@@ -252,18 +222,15 @@ public class TCPSettingsClient : MonoBehaviour
                     );
 
 
-                Debug.Log(
-                    "===================================="
-                );
+                // -----------------------------------------
+                // DEBUG LOG
+                // -----------------------------------------
 
                 Debug.Log(
-                    "SETTINGS JSON RECEIVED:"
-                );
-
-                Debug.Log(json);
-
-                Debug.Log(
-                    "===================================="
+                    "====================================\n" +
+                    "SETTINGS JSON RECEIVED:\n" +
+                    json +
+                    "\n===================================="
                 );
 
 
@@ -275,7 +242,6 @@ public class TCPSettingsClient : MonoBehaviour
                     JsonConvert.DeserializeObject<SettingsData>(
                         json
                     );
-
 
                 if (settings == null)
                 {
@@ -304,6 +270,24 @@ public class TCPSettingsClient : MonoBehaviour
                 );
             }
         }
+        finally
+        {
+            connected = false;
+        }
+    }
+
+
+    // =====================================================
+    // READ BIG ENDIAN INT32
+    // =====================================================
+
+    private int ReadBigEndianInt32(byte[] bytes)
+    {
+        return
+            (bytes[0] << 24) |
+            (bytes[1] << 16) |
+            (bytes[2] << 8) |
+            bytes[3];
     }
 
 
@@ -316,11 +300,13 @@ public class TCPSettingsClient : MonoBehaviour
         int size
     )
     {
+        if (stream == null || size <= 0)
+            return null;
+
         byte[] data =
             new byte[size];
 
         int totalReceived = 0;
-
 
         while (totalReceived < size)
         {
@@ -331,16 +317,11 @@ public class TCPSettingsClient : MonoBehaviour
                     size - totalReceived
                 );
 
-
             if (received <= 0)
-            {
                 return null;
-            }
-
 
             totalReceived += received;
         }
-
 
         return data;
     }
@@ -350,15 +331,19 @@ public class TCPSettingsClient : MonoBehaviour
     // APPLY SETTINGS
     // =====================================================
 
-    private void ApplySettings(
-        SettingsData settings
-    )
+    private void ApplySettings(SettingsData settings)
     {
-        Debug.Log(
-            "===================================="
-        );
+        if (settings == null)
+        {
+            Debug.LogError(
+                "Cannot apply null settings."
+            );
+
+            return;
+        }
 
         Debug.Log(
+            "====================================\n" +
             "APPLYING NEW SETTINGS"
         );
 
@@ -367,263 +352,36 @@ public class TCPSettingsClient : MonoBehaviour
         // ENVIRONMENT
         // =================================================
 
-        if (environmentManager != null)
-        {
-            try
-            {
-                EnvironmentManager.EnvironmentType selectedEnvironment;
-
-                switch (settings.environment)
-                {
-                    case 1:
-                        selectedEnvironment =
-                            EnvironmentManager.EnvironmentType.Neutral;
-                        break;
-
-                    case 2:
-                        selectedEnvironment =
-                            EnvironmentManager.EnvironmentType.Desert;
-                        break;
-
-                    case 3:
-                        selectedEnvironment =
-                            EnvironmentManager.EnvironmentType.Galaxy;
-                        break;
-
-                    case 4:
-                        selectedEnvironment =
-                            EnvironmentManager.EnvironmentType.Park;
-                        break;
-
-                    default:
-                        Debug.LogError(
-                            "Invalid environment number received: " +
-                            settings.environment
-                        );
-
-                        return;
-                }
-
-                environmentManager.environmentType =
-                    selectedEnvironment;
-
-                environmentManager.ApplyEnvironment();
-
-                Debug.Log(
-                    "Environment applied: " +
-                    selectedEnvironment
-                );
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError(
-                    "Environment error: " +
-                    ex.Message
-                );
-            }
-        }
-       
-        else
-        {
-            Debug.LogError(
-                "EnvironmentManager reference is missing!"
-            );
-        }
+        ApplyEnvironment(
+            settings.environment
+        );
 
 
         // =================================================
         // MUSIC
         // =================================================
 
-        // MUSIC
-        if (musicManager != null)
-        {
-            try
-            {
-                MusicManager.MusicMode selectedMusic;
-
-                switch (settings.music)
-                {
-                    case 1:
-                        selectedMusic = MusicManager.MusicMode.Calm;
-                        break;
-
-                    case 2:
-                        selectedMusic = MusicManager.MusicMode.Rhythmic;
-                        break;
-
-                    case 3:
-                        selectedMusic = MusicManager.MusicMode.NoMusic;
-                        break;
-
-                    default:
-                        Debug.LogError(
-                            "Invalid music number received: " +
-                            settings.music
-                        );
-
-                        return;
-                }
-
-                musicManager.musicMode = selectedMusic;
-                musicManager.ApplyMusicMode();
-
-                Debug.Log(
-                    "Music applied: " +
-                    selectedMusic
-                );
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError(
-                    "Music error: " +
-                    ex.Message
-                );
-            }
-        }
-        else
-        {
-            Debug.LogError(
-                "MusicManager reference is missing!"
-            );
-        }
+        ApplyMusic(
+            settings.music
+        );
 
 
         // =================================================
         // GAME MODE
         // =================================================
 
-        if (gameManager != null)
-        {
-            try
-            {
-                GameManager.ScoreMode
-                    selectedScoreMode;
-
-
-                bool validGameMode =
-                    Enum.TryParse(
-                        settings.gameMode,
-                        true,
-                        out selectedScoreMode
-                    );
-
-
-                if (!validGameMode)
-                {
-                    Debug.LogError(
-                        "Invalid game mode received: " +
-                        settings.gameMode
-                    );
-                }
-                else
-                {
-                    gameManager.scoreMode =
-                        selectedScoreMode;
-
-
-                    Debug.Log(
-                        "Game Mode applied: " +
-                        selectedScoreMode
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError(
-                    "Game mode error: " +
-                    ex.Message
-                );
-            }
-        }
-        else
-        {
-            Debug.LogError(
-                "GameManager reference is missing!"
-            );
-        }
+        ApplyGameMode(
+            settings.gameMode
+        );
 
 
         // =================================================
         // AVATAR
         // =================================================
 
-        // AVATAR
-        if (avatarManager != null)
-        {
-            try
-            {
-                int avatarIndex = settings.avatar - 1;
-
-                if (avatarIndex < 0)
-                {
-                    Debug.LogError(
-                        "Invalid avatar number received: " +
-                        settings.avatar
-                    );
-                }
-                else
-                {
-                    string[] avatarNames =
-                    {
-                "OverWeightedWoman",
-                "UnderWeightedWoman",
-                "OverWeightedMan",
-                "UnderWeightedMan",
-                "OldWoman",
-                "YoungWoman",
-                "OldMan",
-                "YoungMan"
-            };
-
-                    if (avatarIndex >= avatarNames.Length)
-                    {
-                        Debug.LogError(
-                            "Avatar number is outside the available range: " +
-                            settings.avatar
-                        );
-                    }
-                    else
-                    {
-                        string avatarName =
-                            avatarNames[avatarIndex];
-
-                        bool avatarApplied =
-                            avatarManager.SelectAvatarByName(
-                                avatarName
-                            );
-
-                        if (!avatarApplied)
-                        {
-                            Debug.LogError(
-                                "Avatar not found in AvatarManager: " +
-                                avatarName
-                            );
-                        }
-                        else
-                        {
-                            Debug.Log(
-                                "Avatar applied: " +
-                                avatarName
-                            );
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError(
-                    "Avatar error: " +
-                    ex.Message
-                );
-            }
-        }
-        else
-        {
-            Debug.LogError(
-                "AvatarManager reference is missing!"
-            );
-        }
+        ApplyAvatar(
+            settings.avatar
+        );
 
 
         // =================================================
@@ -631,36 +389,355 @@ public class TCPSettingsClient : MonoBehaviour
         // =================================================
 
         Debug.Log(
+            "====================================\n" +
+            "SETTINGS APPLIED\n" +
+            "Environment = " + settings.environment + "\n" +
+            "Music = " + settings.music + "\n" +
+            "GameMode = " + settings.gameMode + "\n" +
+            "Avatar = " + settings.avatar + "\n" +
             "===================================="
         );
+    }
 
-        Debug.Log(
-            "SETTINGS APPLIED"
-        );
 
-        Debug.Log(
-            "Environment = " +
-            settings.environment
-        );
+    // =====================================================
+    // APPLY ENVIRONMENT
+    // =====================================================
 
-        Debug.Log(
-            "Music = " +
-            settings.music
-        );
+    private void ApplyEnvironment(int environmentNumber)
+    {
+        if (environmentManager == null)
+        {
+            Debug.LogError(
+                "EnvironmentManager reference is missing!"
+            );
 
-        Debug.Log(
-            "GameMode = " +
-            settings.gameMode
-        );
+            return;
+        }
 
-        Debug.Log(
-            "Avatar = " +
-            settings.avatar
-        );
+        try
+        {
+            if (!TryGetEnvironment(
+                    environmentNumber,
+                    out EnvironmentManager.EnvironmentType environmentType))
+            {
+                Debug.LogError(
+                    "Invalid environment number received: " +
+                    environmentNumber
+                );
 
-        Debug.Log(
-            "===================================="
-        );
+                return;
+            }
+
+            environmentManager.environmentType =
+                environmentType;
+
+            environmentManager.ApplyEnvironment();
+
+            Debug.Log(
+                "Environment applied: " +
+                environmentType
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                "Environment error: " +
+                ex.Message
+            );
+        }
+    }
+
+
+    // =====================================================
+    // ENVIRONMENT MAPPING
+    // =====================================================
+
+    private bool TryGetEnvironment(
+        int number,
+        out EnvironmentManager.EnvironmentType environmentType
+    )
+    {
+        switch (number)
+        {
+            case 1:
+                environmentType =
+                    EnvironmentManager.EnvironmentType.Galaxy;
+                return true;
+
+            case 2:
+                environmentType =
+                    EnvironmentManager.EnvironmentType.Desert;
+                return true;
+
+            case 3:
+                environmentType =
+                    EnvironmentManager.EnvironmentType.Neutral;
+                return true;
+
+            case 4:
+                environmentType =
+                    EnvironmentManager.EnvironmentType.Park;
+                return true;
+
+            default:
+                environmentType =
+                    default;
+                return false;
+        }
+    }
+
+
+    // =====================================================
+    // APPLY MUSIC
+    // =====================================================
+
+    private void ApplyMusic(int musicNumber)
+    {
+        if (musicManager == null)
+        {
+            Debug.LogError(
+                "MusicManager reference is missing!"
+            );
+
+            return;
+        }
+
+        try
+        {
+            if (!TryGetMusicMode(
+                    musicNumber,
+                    out MusicManager.MusicMode musicMode))
+            {
+                Debug.LogError(
+                    "Invalid music number received: " +
+                    musicNumber
+                );
+
+                return;
+            }
+
+            musicManager.musicMode =
+                musicMode;
+
+            musicManager.ApplyMusicMode();
+
+            Debug.Log(
+                "Music applied: " +
+                musicMode
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                "Music error: " +
+                ex.Message
+            );
+        }
+    }
+
+
+    // =====================================================
+    // MUSIC MAPPING
+    // =====================================================
+
+    private bool TryGetMusicMode(
+    int number,
+    out MusicManager.MusicMode musicMode
+)
+    {
+        switch (number)
+        {
+            case 1:
+                musicMode =
+                    MusicManager.MusicMode.Relaxing;
+                return true;
+
+            case 2:
+                musicMode =
+                    MusicManager.MusicMode.Motivating;
+                return true;
+
+            case 3:
+                musicMode =
+                    MusicManager.MusicMode.NoMusic;
+                return true;
+
+            default:
+                musicMode = default;
+                return false;
+        }
+    }
+
+    // =====================================================
+    // APPLY GAME MODE
+    // =====================================================
+
+    private void ApplyGameMode(string gameMode)
+    {
+        if (gameManager == null)
+        {
+            Debug.LogError(
+                "GameManager reference is missing!"
+            );
+
+            return;
+        }
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(gameMode))
+            {
+                Debug.LogError(
+                    "Game mode received is empty."
+                );
+
+                return;
+            }
+
+            if (!Enum.TryParse(
+                    gameMode,
+                    true,
+                    out GameManager.ScoreMode scoreMode))
+            {
+                Debug.LogError(
+                    "Invalid game mode received: " +
+                    gameMode
+                );
+
+                return;
+            }
+
+            gameManager.scoreMode =
+                scoreMode;
+
+            Debug.Log(
+                "Game Mode applied: " +
+                scoreMode
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                "Game mode error: " +
+                ex.Message
+            );
+        }
+    }
+
+
+    // =====================================================
+    // APPLY AVATAR
+    // =====================================================
+
+    private void ApplyAvatar(int avatarNumber)
+    {
+        if (avatarManager == null)
+        {
+            Debug.LogError(
+                "AvatarManager reference is missing!"
+            );
+
+            return;
+        }
+
+        try
+        {
+            string avatarName =
+                GetAvatarName(avatarNumber);
+
+            if (string.IsNullOrEmpty(avatarName))
+            {
+                Debug.LogError(
+                    "Invalid avatar number received: " +
+                    avatarNumber
+                );
+
+                return;
+            }
+
+            bool avatarApplied =
+                avatarManager.SelectAvatarByName(
+                    avatarName
+                );
+
+            if (!avatarApplied)
+            {
+                Debug.LogError(
+                    "Avatar not found in AvatarManager: " +
+                    avatarName
+                );
+
+                return;
+            }
+
+            Debug.Log(
+                "Avatar applied: " +
+                avatarName
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(
+                "Avatar error: " +
+                ex.Message
+            );
+        }
+    }
+
+
+    // =====================================================
+    // AVATAR MAPPING
+    // =====================================================
+
+    private string GetAvatarName(int avatarNumber)
+    {
+        switch (avatarNumber)
+        {
+            case 1:
+                return "OverWeightedWoman";
+
+            case 2:
+                return "UnderWeightedWoman";
+
+            case 3:
+                return "OverWeightedMan";
+
+            case 4:
+                return "UnderWeightedMan";
+
+            case 5:
+                return "OldWoman";
+
+            case 6:
+                return "YoungWoman";
+
+            case 7:
+                return "OldMan";
+
+            case 8:
+                return "YoungMan";
+
+            default:
+                return null;
+        }
+    }
+
+
+    // =====================================================
+    // SERVER DISCONNECT
+    // =====================================================
+
+    private void HandleServerDisconnect()
+    {
+        connected = false;
+
+        if (!shuttingDown)
+        {
+            Debug.Log(
+                "Settings server disconnected."
+            );
+        }
     }
 
 
@@ -671,35 +748,42 @@ public class TCPSettingsClient : MonoBehaviour
     private void OnDestroy()
     {
         shuttingDown = true;
-
         connected = false;
 
+        CloseConnection();
+    }
 
+
+    // =====================================================
+    // CLOSE CONNECTION
+    // =====================================================
+
+    private void CloseConnection()
+    {
         try
         {
             if (networkStream != null)
             {
                 networkStream.Close();
-
                 networkStream = null;
             }
         }
         catch
         {
+            // Ignore cleanup exceptions.
         }
-
 
         try
         {
             if (client != null)
             {
                 client.Close();
-
                 client = null;
             }
         }
         catch
         {
+            // Ignore cleanup exceptions.
         }
     }
 }

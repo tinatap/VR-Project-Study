@@ -1,0 +1,51 @@
+{
+    "messageType": "EXPERIMENT_SUMMARY",
+    "recordType": "EXPERIMENT_SUMMARY",
+    "timestamp": 96.614,
+    "finalResult": "FAILED - EXIT",
+    "totalGameTime": 69.55611,
+    "finalScore": 11,
+    "highestCompletedMaze": 2,
+    "startRoomDuration": 21.1904583,
+    "mazeVisits": [
+        {
+            "visitNumber": 1,
+            "mazeNumber": 1,
+            "attemptNumber": 1,
+            "durationSeconds": 16.5648823,
+            "collectedCoins": 4,
+            "totalCoins": 15,
+            "result": "SUCCESS",
+            "endReason": "SUCCESS_PANEL",
+            "totalGameElapsedTime": 16.5648823,
+            "startRoomDuration": 21.1904583
+        },
+        {
+            "visitNumber": 2,
+            "mazeNumber": 2,
+            "attemptNumber": 1,
+            "durationSeconds": 28.3766861,
+            "collectedCoins": 7,
+            "totalCoins": 20,
+            "result": "SUCCESS",
+            "endReason": "SUCCESS_PANEL",
+            "totalGameElapsedTime": 54.94487,
+            "startRoomDuration": 21.1904583
+        },
+        {
+            "visitNumber": 3,
+            "mazeNumber": 3,
+            "attemptNumber": 1,
+            "durationSeconds": 4.60800171,
+            "collectedCoins": 0,
+            "totalCoins": 25,
+            "result": "FAILED - EXIT",
+            "endReason": "EXIT_YES",
+            "totalGameElapsedTime": 69.55611,
+            "startRoomDuration": 21.1904583
+        }
+    ],
+    "participantName": "Tina Aminipour",
+    "participantID": "4890",
+    "serverReceivedTime": "2026-09-18T13:49:55.511608"
+}

@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 
+
 // =====================================================
 // DECORATION SPAWN GROUP
 // =====================================================
@@ -252,13 +253,25 @@ public class EnvironmentManager : MonoBehaviour
 
     private void Start()
     {
-        if (mazes != null)
-        {
-            mazeDecorationsSpawned =
-                new bool[mazes.Length];
-        }
+        InitializeMazeDecorationStatus();
 
         ApplyEnvironment();
+    }
+
+
+    // =================================================
+    // INITIALIZE RUNTIME STATUS
+    // =================================================
+
+    private void InitializeMazeDecorationStatus()
+    {
+        int mazeCount =
+            mazes != null
+                ? mazes.Length
+                : 0;
+
+        mazeDecorationsSpawned =
+            new bool[mazeCount];
     }
 
 
@@ -271,7 +284,6 @@ public class EnvironmentManager : MonoBehaviour
         EnvironmentData environment =
             GetSelectedEnvironment();
 
-
         if (environment == null)
         {
             Debug.LogWarning(
@@ -281,11 +293,8 @@ public class EnvironmentManager : MonoBehaviour
             return;
         }
 
-
         ApplyMaterials(environment);
-
         ApplySky(environment);
-
 
         Debug.Log(
             "Environment applied: " +
@@ -310,18 +319,16 @@ public class EnvironmentManager : MonoBehaviour
             return null;
         }
 
-
         string selectedName =
             environmentType.ToString();
 
-
-        foreach (
-            EnvironmentData environment
-            in environments)
+        for (int i = 0; i < environments.Length; i++)
         {
+            EnvironmentData environment =
+                environments[i];
+
             if (environment == null)
                 continue;
-
 
             if (environment.environmentName ==
                 selectedName)
@@ -330,12 +337,10 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
 
-
         Debug.LogWarning(
             "Environment not found: " +
             selectedName
         );
-
 
         return null;
     }
@@ -351,9 +356,11 @@ public class EnvironmentManager : MonoBehaviour
         if (mazes == null)
             return;
 
-
-        foreach (MazeGroup mazeGroup in mazes)
+        for (int i = 0; i < mazes.Length; i++)
         {
+            MazeGroup mazeGroup =
+                mazes[i];
+
             if (mazeGroup == null)
                 continue;
 
@@ -370,18 +377,24 @@ public class EnvironmentManager : MonoBehaviour
                     mazeGroup.wallsParent
                     .GetComponentsInChildren<Renderer>(true);
 
+                Material[] wallMaterials =
+                    environment.wallMaterials;
 
-                foreach (Renderer wall in walls)
+                int materialCount =
+                    wallMaterials.Length;
+
+                for (int j = 0; j < walls.Length; j++)
                 {
+                    Renderer wall = walls[j];
+
                     if (wall == null)
                         continue;
 
-
                     wall.material =
-                        environment.wallMaterials[
+                        wallMaterials[
                             Random.Range(
                                 0,
-                                environment.wallMaterials.Length
+                                materialCount
                             )
                         ];
                 }
@@ -419,10 +432,8 @@ public class EnvironmentManager : MonoBehaviour
             return;
         }
 
-
         RenderSettings.skybox =
             environment.skyboxMaterial;
-
 
         DynamicGI.UpdateEnvironment();
     }
@@ -435,9 +446,7 @@ public class EnvironmentManager : MonoBehaviour
     public void ApplyDecorationsForMaze(
         int mazeIndex)
     {
-        if (mazes == null ||
-            mazeIndex < 0 ||
-            mazeIndex >= mazes.Length)
+        if (!IsValidMazeIndex(mazeIndex))
         {
             Debug.LogWarning(
                 "EnvironmentManager: Invalid maze index: " +
@@ -447,10 +456,8 @@ public class EnvironmentManager : MonoBehaviour
             return;
         }
 
-
         EnvironmentData environment =
             GetSelectedEnvironment();
-
 
         if (environment == null)
         {
@@ -461,10 +468,11 @@ public class EnvironmentManager : MonoBehaviour
             return;
         }
 
+        MazeGroup mazeGroup =
+            mazes[mazeIndex];
 
         GameObject currentMaze =
-            mazes[mazeIndex].maze;
-
+            mazeGroup.maze;
 
         if (currentMaze == null)
         {
@@ -494,7 +502,6 @@ public class EnvironmentManager : MonoBehaviour
                 currentMaze
             );
 
-
         if (mazeData == null)
         {
             Debug.LogWarning(
@@ -511,7 +518,7 @@ public class EnvironmentManager : MonoBehaviour
 
 
         // =================================================
-        // CHECK IF THIS ENVIRONMENT + MAZE WAS SAVED
+        // CHECK SAVED LAYOUT
         // =================================================
 
         SavedMazeDecorations savedMaze =
@@ -520,7 +527,6 @@ public class EnvironmentManager : MonoBehaviour
                 currentMaze.name,
                 mazeIndex
             );
-
 
         if (savedMaze != null)
         {
@@ -531,12 +537,10 @@ public class EnvironmentManager : MonoBehaviour
                 currentMaze.name
             );
 
-
             LoadDecorationsForMaze(
                 savedMaze,
                 currentMaze
             );
-
 
             MarkDecorationsSpawned(mazeIndex);
 
@@ -557,19 +561,18 @@ public class EnvironmentManager : MonoBehaviour
             currentMaze.name
         );
 
-
         SavedMazeDecorations newSavedMaze =
-            new SavedMazeDecorations();
+            new SavedMazeDecorations
+            {
+                environmentName =
+                    environment.environmentName,
 
+                mazeName =
+                    currentMaze.name,
 
-        newSavedMaze.environmentName =
-            environment.environmentName;
-
-        newSavedMaze.mazeName =
-            currentMaze.name;
-
-        newSavedMaze.mazeIndex =
-            mazeIndex;
+                mazeIndex =
+                    mazeIndex
+            };
 
 
         if (mazeData.decorationGroups == null ||
@@ -580,9 +583,7 @@ public class EnvironmentManager : MonoBehaviour
                 currentMaze.name
             );
 
-
             AddSavedMaze(newSavedMaze);
-
             MarkDecorationsSpawned(mazeIndex);
 
             return;
@@ -591,16 +592,15 @@ public class EnvironmentManager : MonoBehaviour
 
         for (
             int groupIndex = 0;
-            groupIndex < mazeData.decorationGroups.Length;
+            groupIndex <
+            mazeData.decorationGroups.Length;
             groupIndex++)
         {
             DecorationSpawnGroup group =
                 mazeData.decorationGroups[groupIndex];
 
-
             if (group == null)
                 continue;
-
 
             if (group.prefab == null)
             {
@@ -612,15 +612,13 @@ public class EnvironmentManager : MonoBehaviour
                 continue;
             }
 
-
             SavedDecorationGroup savedGroup =
                 SpawnRandomNearWallsAndSave(
                     group,
                     groupIndex,
                     currentMaze,
-                    mazes[mazeIndex]
+                    mazeGroup
                 );
-
 
             if (savedGroup != null)
             {
@@ -632,16 +630,14 @@ public class EnvironmentManager : MonoBehaviour
 
 
         // =================================================
-        // SAVE EVERYTHING TO DISK
+        // SAVE EVERYTHING
         // =================================================
 
         AddSavedMaze(newSavedMaze);
 
         SaveDecorationFile();
 
-
         MarkDecorationsSpawned(mazeIndex);
-
 
         Debug.Log(
             "NEW decoration layout SAVED permanently: " +
@@ -716,7 +712,6 @@ public class EnvironmentManager : MonoBehaviour
             mazeGroup.wallsParent
             .GetComponentsInChildren<Collider>(true);
 
-
         if (wallColliders.Length == 0)
         {
             Debug.LogWarning(
@@ -747,8 +742,14 @@ public class EnvironmentManager : MonoBehaviour
             mazeGroup.floor.bounds;
 
 
+        // =============================================
+        // SPAWNED POSITIONS
+        // =============================================
+
         List<Vector3> spawnedPositions =
-            new List<Vector3>();
+            new List<Vector3>(
+                group.spawnCount
+            );
 
 
         // =============================================
@@ -756,14 +757,11 @@ public class EnvironmentManager : MonoBehaviour
         // =============================================
 
         SavedDecorationGroup savedGroup =
-            new SavedDecorationGroup();
-
-
-        savedGroup.groupIndex =
-            groupIndex;
-
-        savedGroup.prefabName =
-            group.prefab.name;
+            new SavedDecorationGroup
+            {
+                groupIndex = groupIndex,
+                prefabName = group.prefab.name
+            };
 
 
         // =============================================
@@ -771,9 +769,10 @@ public class EnvironmentManager : MonoBehaviour
         // =============================================
 
         int spawnedCount = 0;
-
         int attempts = 0;
 
+        int wallCount =
+            wallColliders.Length;
 
         while (
             spawnedCount < group.spawnCount &&
@@ -790,14 +789,17 @@ public class EnvironmentManager : MonoBehaviour
                 wallColliders[
                     Random.Range(
                         0,
-                        wallColliders.Length
+                        wallCount
                     )
                 ];
-
 
             if (wall == null)
                 continue;
 
+
+            // -----------------------------------------
+            // Wall bounds
+            // -----------------------------------------
 
             Bounds wallBounds =
                 wall.bounds;
@@ -814,16 +816,14 @@ public class EnvironmentManager : MonoBehaviour
                 );
 
 
-            Vector3 candidate;
-
-
             // -----------------------------------------
-            // Choose wall side
+            // Random wall side
             // -----------------------------------------
 
             int side =
                 Random.Range(0, 4);
 
+            Vector3 candidate;
 
             switch (side)
             {
@@ -888,12 +888,15 @@ public class EnvironmentManager : MonoBehaviour
             // CHECK FLOOR
             // =========================================
 
-            if (!floorBounds.Contains(
+            Vector3 floorCheckPoint =
                 new Vector3(
                     candidate.x,
                     floorBounds.center.y,
                     candidate.z
-                )))
+                );
+
+            if (!floorBounds.Contains(
+                floorCheckPoint))
             {
                 continue;
             }
@@ -906,21 +909,18 @@ public class EnvironmentManager : MonoBehaviour
             Vector3 closestPoint =
                 wall.ClosestPoint(candidate);
 
-
             float wallDistance =
                 Vector3.Distance(
                     candidate,
                     closestPoint
                 );
 
-
             if (
                 wallDistance <
                 group.minDistanceFromWall ||
 
                 wallDistance >
-                group.maxDistanceFromWall
-            )
+                group.maxDistanceFromWall)
             {
                 continue;
             }
@@ -932,25 +932,24 @@ public class EnvironmentManager : MonoBehaviour
 
             bool tooClose = false;
 
+            float minDistance =
+                group.minDistanceBetweenDecorations;
 
-            foreach (
-                Vector3 existingPosition
-                in spawnedPositions)
+            for (
+                int i = 0;
+                i < spawnedPositions.Count;
+                i++)
             {
                 if (
                     Vector3.Distance(
                         candidate,
-                        existingPosition
-                    )
-                    <
-                    group.minDistanceBetweenDecorations
-                )
+                        spawnedPositions[i]
+                    ) < minDistance)
                 {
                     tooClose = true;
                     break;
                 }
             }
-
 
             if (tooClose)
                 continue;
@@ -962,7 +961,6 @@ public class EnvironmentManager : MonoBehaviour
 
             Quaternion rotation =
                 group.prefab.transform.rotation;
-
 
             if (group.randomRotation)
             {
@@ -984,7 +982,6 @@ public class EnvironmentManager : MonoBehaviour
 
             Vector3 finalScale =
                 group.prefab.transform.localScale;
-
 
             if (group.randomScale)
             {
@@ -1009,12 +1006,10 @@ public class EnvironmentManager : MonoBehaviour
                     rotation
                 );
 
-
             decoration.transform.SetParent(
                 decorationContainer.transform,
                 true
             );
-
 
             decoration.transform.localScale =
                 finalScale;
@@ -1025,20 +1020,17 @@ public class EnvironmentManager : MonoBehaviour
             // =========================================
 
             SavedDecoration savedDecoration =
-                new SavedDecoration();
+                new SavedDecoration
+                {
+                    localPosition =
+                        decoration.transform.localPosition,
 
+                    localRotation =
+                        decoration.transform.localRotation,
 
-            savedDecoration.localPosition =
-                decoration.transform.localPosition;
-
-
-            savedDecoration.localRotation =
-                decoration.transform.localRotation;
-
-
-            savedDecoration.localScale =
-                decoration.transform.localScale;
-
+                    localScale =
+                        decoration.transform.localScale
+                };
 
             savedGroup.decorations.Add(
                 savedDecoration
@@ -1052,7 +1044,6 @@ public class EnvironmentManager : MonoBehaviour
             spawnedPositions.Add(
                 candidate
             );
-
 
             spawnedCount++;
         }
@@ -1069,7 +1060,6 @@ public class EnvironmentManager : MonoBehaviour
             attempts
         );
 
-
         return savedGroup;
     }
 
@@ -1082,9 +1072,11 @@ public class EnvironmentManager : MonoBehaviour
         SavedMazeDecorations savedMaze,
         GameObject currentMaze)
     {
-        if (savedMaze == null)
+        if (savedMaze == null ||
+            savedMaze.groups == null)
+        {
             return;
-
+        }
 
         foreach (
             SavedDecorationGroup savedGroup
@@ -1093,14 +1085,12 @@ public class EnvironmentManager : MonoBehaviour
             if (savedGroup == null)
                 continue;
 
-
             GameObject prefab =
                 FindPrefabForSavedGroup(
                     savedMaze.environmentName,
                     savedMaze.mazeName,
                     savedGroup.groupIndex
                 );
-
 
             if (prefab == null)
             {
@@ -1112,13 +1102,14 @@ public class EnvironmentManager : MonoBehaviour
                 continue;
             }
 
-
             GameObject container =
                 CreateDecorationContainer(
                     prefab,
                     currentMaze
                 );
 
+            if (savedGroup.decorations == null)
+                continue;
 
             foreach (
                 SavedDecoration savedDecoration
@@ -1127,23 +1118,22 @@ public class EnvironmentManager : MonoBehaviour
                 if (savedDecoration == null)
                     continue;
 
-
                 GameObject decoration =
                     Instantiate(
                         prefab,
                         container.transform
                     );
 
+                Transform transform =
+                    decoration.transform;
 
-                decoration.transform.localPosition =
+                transform.localPosition =
                     savedDecoration.localPosition;
 
-
-                decoration.transform.localRotation =
+                transform.localRotation =
                     savedDecoration.localRotation;
 
-
-                decoration.transform.localScale =
+                transform.localScale =
                     savedDecoration.localScale;
             }
         }
@@ -1159,38 +1149,14 @@ public class EnvironmentManager : MonoBehaviour
         string mazeName,
         int groupIndex)
     {
-        EnvironmentData environment = null;
+        EnvironmentData environment =
+            FindEnvironmentByName(environmentName);
 
-
-        if (environments != null)
+        if (environment == null ||
+            environment.mazes == null)
         {
-            foreach (
-                EnvironmentData env
-                in environments)
-            {
-                if (env == null)
-                    continue;
-
-
-                if (
-                    env.environmentName ==
-                    environmentName
-                )
-                {
-                    environment = env;
-                    break;
-                }
-            }
+            return null;
         }
-
-
-        if (environment == null)
-            return null;
-
-
-        if (environment.mazes == null)
-            return null;
-
 
         foreach (
             EnvironmentMazeData mazeData
@@ -1198,40 +1164,61 @@ public class EnvironmentManager : MonoBehaviour
         {
             if (mazeData == null ||
                 mazeData.maze == null)
+            {
                 continue;
-
+            }
 
             if (mazeData.maze.name != mazeName)
                 continue;
 
-
             if (mazeData.decorationGroups == null)
                 return null;
-
 
             if (
                 groupIndex < 0 ||
                 groupIndex >=
-                mazeData.decorationGroups.Length
-            )
+                mazeData.decorationGroups.Length)
             {
                 return null;
             }
 
-
             DecorationSpawnGroup group =
-                mazeData.decorationGroups[
-                    groupIndex
-                ];
-
+                mazeData.decorationGroups[groupIndex];
 
             if (group == null)
                 return null;
 
-
             return group.prefab;
         }
 
+        return null;
+    }
+
+
+    // =====================================================
+    // FIND ENVIRONMENT BY NAME
+    // =====================================================
+
+    private EnvironmentData FindEnvironmentByName(
+        string environmentName)
+    {
+        if (environments == null)
+            return null;
+
+        for (int i = 0; i < environments.Length; i++)
+        {
+            EnvironmentData environment =
+                environments[i];
+
+            if (environment == null)
+                continue;
+
+            if (environment.environmentName ==
+                environmentName)
+            {
+                return environment;
+            }
+        }
 
         return null;
     }
@@ -1251,12 +1238,13 @@ public class EnvironmentManager : MonoBehaviour
                 "_Spawned"
             );
 
+        Transform containerTransform =
+            container.transform;
 
-        container.transform.SetParent(
+        containerTransform.SetParent(
             currentMaze.transform,
             false
         );
-
 
         return container;
     }
@@ -1272,24 +1260,25 @@ public class EnvironmentManager : MonoBehaviour
         if (currentMaze == null)
             return;
 
-
         List<GameObject> containers =
             new List<GameObject>();
 
+        Transform mazeTransform =
+            currentMaze.transform;
 
-        foreach (
-            Transform child
-            in currentMaze.transform)
+        int childCount =
+            mazeTransform.childCount;
+
+        for (int i = 0; i < childCount; i++)
         {
+            Transform child =
+                mazeTransform.GetChild(i);
+
             if (child == null)
                 continue;
 
-
-            if (
-                child.name.EndsWith(
-                    "_Spawned"
-                )
-            )
+            if (child.name.EndsWith(
+                "_Spawned"))
             {
                 containers.Add(
                     child.gameObject
@@ -1297,11 +1286,11 @@ public class EnvironmentManager : MonoBehaviour
             }
         }
 
-
-        foreach (
-            GameObject container
-            in containers)
+        for (int i = 0; i < containers.Count; i++)
         {
+            GameObject container =
+                containers[i];
+
             if (Application.isPlaying)
             {
                 Destroy(container);
@@ -1322,9 +1311,11 @@ public class EnvironmentManager : MonoBehaviour
         EnvironmentData environment,
         GameObject maze)
     {
-        if (environment.mazes == null)
+        if (environment == null ||
+            environment.mazes == null)
+        {
             return null;
-
+        }
 
         foreach (
             EnvironmentMazeData mazeData
@@ -1333,13 +1324,9 @@ public class EnvironmentManager : MonoBehaviour
             if (mazeData == null)
                 continue;
 
-
             if (mazeData.maze == maze)
-            {
                 return mazeData;
-            }
         }
-
 
         return null;
     }
@@ -1360,14 +1347,12 @@ public class EnvironmentManager : MonoBehaviour
             return null;
         }
 
-
         foreach (
             SavedMazeDecorations savedMaze
             in saveFile.mazes)
         {
             if (savedMaze == null)
                 continue;
-
 
             if (
                 savedMaze.environmentName ==
@@ -1377,13 +1362,11 @@ public class EnvironmentManager : MonoBehaviour
                 mazeName &&
 
                 savedMaze.mazeIndex ==
-                mazeIndex
-            )
+                mazeIndex)
             {
                 return savedMaze;
             }
         }
-
 
         return null;
     }
@@ -1396,12 +1379,14 @@ public class EnvironmentManager : MonoBehaviour
     private void AddSavedMaze(
         SavedMazeDecorations newMaze)
     {
+        if (newMaze == null)
+            return;
+
         if (saveFile == null)
         {
             saveFile =
                 new DecorationSaveFile();
         }
-
 
         if (saveFile.mazes == null)
         {
@@ -1410,8 +1395,7 @@ public class EnvironmentManager : MonoBehaviour
         }
 
 
-        // Remove old version if it exists
-
+        // Remove previous version
         for (
             int i = saveFile.mazes.Count - 1;
             i >= 0;
@@ -1420,10 +1404,8 @@ public class EnvironmentManager : MonoBehaviour
             SavedMazeDecorations oldMaze =
                 saveFile.mazes[i];
 
-
             if (oldMaze == null)
                 continue;
-
 
             if (
                 oldMaze.environmentName ==
@@ -1433,17 +1415,13 @@ public class EnvironmentManager : MonoBehaviour
                 newMaze.mazeName &&
 
                 oldMaze.mazeIndex ==
-                newMaze.mazeIndex
-            )
+                newMaze.mazeIndex)
             {
                 saveFile.mazes.RemoveAt(i);
             }
         }
 
-
-        saveFile.mazes.Add(
-            newMaze
-        );
+        saveFile.mazes.Add(newMaze);
     }
 
 
@@ -1455,11 +1433,7 @@ public class EnvironmentManager : MonoBehaviour
     {
         try
         {
-            if (
-                !File.Exists(
-                    SavePath
-                )
-            )
+            if (!File.Exists(SavePath))
             {
                 saveFile =
                     new DecorationSaveFile();
@@ -1472,12 +1446,8 @@ public class EnvironmentManager : MonoBehaviour
                 return;
             }
 
-
             string json =
-                File.ReadAllText(
-                    SavePath
-                );
-
+                File.ReadAllText(SavePath);
 
             if (string.IsNullOrEmpty(json))
             {
@@ -1487,13 +1457,10 @@ public class EnvironmentManager : MonoBehaviour
                 return;
             }
 
-
             saveFile =
-                JsonUtility.FromJson
-                <DecorationSaveFile>(
+                JsonUtility.FromJson<DecorationSaveFile>(
                     json
                 );
-
 
             if (saveFile == null)
             {
@@ -1501,13 +1468,11 @@ public class EnvironmentManager : MonoBehaviour
                     new DecorationSaveFile();
             }
 
-
             if (saveFile.mazes == null)
             {
                 saveFile.mazes =
                     new List<SavedMazeDecorations>();
             }
-
 
             Debug.Log(
                 "Decoration save file loaded: " +
@@ -1520,7 +1485,6 @@ public class EnvironmentManager : MonoBehaviour
                 "Failed to load decoration save file: " +
                 e.Message
             );
-
 
             saveFile =
                 new DecorationSaveFile();
@@ -1542,19 +1506,16 @@ public class EnvironmentManager : MonoBehaviour
                     new DecorationSaveFile();
             }
 
-
             string json =
                 JsonUtility.ToJson(
                     saveFile,
                     true
                 );
 
-
             File.WriteAllText(
                 SavePath,
                 json
             );
-
 
             Debug.Log(
                 "Decoration layout saved to: " +
@@ -1581,20 +1542,16 @@ public class EnvironmentManager : MonoBehaviour
         if (mazeDecorationsSpawned == null)
             return;
 
-
         if (
             mazeIndex < 0 ||
             mazeIndex >=
-            mazeDecorationsSpawned.Length
-        )
+            mazeDecorationsSpawned.Length)
         {
             return;
         }
 
-
-        mazeDecorationsSpawned[
-            mazeIndex
-        ] = true;
+        mazeDecorationsSpawned[mazeIndex] =
+            true;
     }
 
 
@@ -1607,15 +1564,11 @@ public class EnvironmentManager : MonoBehaviour
         if (mazeDecorationsSpawned == null)
             return;
 
-
-        for (
-            int i = 0;
-            i < mazeDecorationsSpawned.Length;
-            i++)
-        {
-            mazeDecorationsSpawned[i] =
-                false;
-        }
+        System.Array.Clear(
+            mazeDecorationsSpawned,
+            0,
+            mazeDecorationsSpawned.Length
+        );
     }
 
 
@@ -1634,14 +1587,14 @@ public class EnvironmentManager : MonoBehaviour
 
         if (mazes != null)
         {
-            foreach (
-                MazeGroup mazeGroup
-                in mazes)
+            for (int i = 0; i < mazes.Length; i++)
             {
+                MazeGroup mazeGroup =
+                    mazes[i];
+
                 if (
                     mazeGroup != null &&
-                    mazeGroup.maze != null
-                )
+                    mazeGroup.maze != null)
                 {
                     ClearSpawnedDecorations(
                         mazeGroup.maze
@@ -1653,9 +1606,7 @@ public class EnvironmentManager : MonoBehaviour
 
         ResetDecorationStatus();
 
-
         ApplyEnvironment();
-
 
         Debug.Log(
             "Environment changed to: " +
@@ -1667,42 +1618,32 @@ public class EnvironmentManager : MonoBehaviour
     // =====================================================
     // DELETE ALL SAVED DECORATIONS
     // =====================================================
-    // اگر خواستی همه Layout ها از اول ساخته شوند
-    // این تابع را از Inspector یا UI صدا بزن.
 
     public void DeleteAllSavedDecorationLayouts()
     {
         try
         {
-            if (
-                File.Exists(
-                    SavePath
-                )
-            )
+            if (File.Exists(SavePath))
             {
-                File.Delete(
-                    SavePath
-                );
+                File.Delete(SavePath);
             }
-
 
             saveFile =
                 new DecorationSaveFile();
-
 
             ResetDecorationStatus();
 
 
             if (mazes != null)
             {
-                foreach (
-                    MazeGroup mazeGroup
-                    in mazes)
+                for (int i = 0; i < mazes.Length; i++)
                 {
+                    MazeGroup mazeGroup =
+                        mazes[i];
+
                     if (
                         mazeGroup != null &&
-                        mazeGroup.maze != null
-                    )
+                        mazeGroup.maze != null)
                     {
                         ClearSpawnedDecorations(
                             mazeGroup.maze
@@ -1710,7 +1651,6 @@ public class EnvironmentManager : MonoBehaviour
                     }
                 }
             }
-
 
             Debug.Log(
                 "ALL saved decoration layouts deleted."
@@ -1729,18 +1669,14 @@ public class EnvironmentManager : MonoBehaviour
     // =====================================================
     // REGENERATE CURRENT ENVIRONMENT
     // =====================================================
-    // این تابع Layout ذخیره‌شده محیط فعلی را پاک می‌کند
-    // تا دفعه بعد دوباره Random شود.
 
     public void RegenerateCurrentEnvironment()
     {
         EnvironmentData environment =
             GetSelectedEnvironment();
 
-
         if (environment == null)
             return;
-
 
         if (saveFile == null ||
             saveFile.mazes == null)
@@ -1752,6 +1688,9 @@ public class EnvironmentManager : MonoBehaviour
         }
 
 
+        // Remove all saved layouts
+        // belonging to current environment
+
         for (
             int i = saveFile.mazes.Count - 1;
             i >= 0;
@@ -1760,15 +1699,12 @@ public class EnvironmentManager : MonoBehaviour
             SavedMazeDecorations savedMaze =
                 saveFile.mazes[i];
 
-
             if (savedMaze == null)
                 continue;
 
-
             if (
                 savedMaze.environmentName ==
-                environment.environmentName
-            )
+                environment.environmentName)
             {
                 saveFile.mazes.RemoveAt(i);
             }
@@ -1777,20 +1713,21 @@ public class EnvironmentManager : MonoBehaviour
 
         SaveDecorationFile();
 
-
         ResetDecorationStatus();
 
 
+        // Clear current visible decorations
+
         if (mazes != null)
         {
-            foreach (
-                MazeGroup mazeGroup
-                in mazes)
+            for (int i = 0; i < mazes.Length; i++)
             {
+                MazeGroup mazeGroup =
+                    mazes[i];
+
                 if (
                     mazeGroup != null &&
-                    mazeGroup.maze != null
-                )
+                    mazeGroup.maze != null)
                 {
                     ClearSpawnedDecorations(
                         mazeGroup.maze
@@ -1804,5 +1741,18 @@ public class EnvironmentManager : MonoBehaviour
             "Decoration layouts regenerated for environment: " +
             environment.environmentName
         );
+    }
+
+
+    // =====================================================
+    // VALIDATE MAZE INDEX
+    // =====================================================
+
+    private bool IsValidMazeIndex(int mazeIndex)
+    {
+        return
+            mazes != null &&
+            mazeIndex >= 0 &&
+            mazeIndex < mazes.Length;
     }
 }

@@ -6,54 +6,47 @@ using System.Collections;
 
 public class StartGameMenuController : MonoBehaviour
 {
-    // ===================================================== 
-    // START ROOM 
-    // ===================================================== 
+    // ============================================================
+    // START ROOM
+    // ============================================================
 
     [Header("Start Room")]
-
     public GameObject startRoom;
     public Transform startSpawnPoint;
 
 
-    // ===================================================== 
-    // PLAYER 
-    // ===================================================== 
+    // ============================================================
+    // PLAYER
+    // ============================================================
 
     [Header("Player")]
-
     public Transform player;
 
 
-    // ===================================================== 
-    // START QUESTION PANEL 
-    // ===================================================== 
+    // ============================================================
+    // START QUESTION PANEL
+    // ============================================================
 
     [Header("Start Question Panel")]
-
     public GameObject startPanel;
-
     public Button yesButton;
     public Button noButton;
 
 
-    // ===================================================== 
-    // LEFT CONTROLLER INPUT 
-    // ===================================================== 
+    // ============================================================
+    // LEFT CONTROLLER INPUT
+    // ============================================================
 
     [Header("Left Controller Input")]
-
     public InputActionReference leftTriggerAction;
-
     public InputActionReference leftThumbstickAction;
 
 
-    // ===================================================== 
-    // TRANSFER PANEL 
-    // ===================================================== 
+    // ============================================================
+    // TRANSFER PANEL
+    // ============================================================
 
     [Header("Transfer Panel")]
-
     public GameObject transferPanel;
 
     public TextMeshProUGUI transferText;
@@ -62,287 +55,218 @@ public class StartGameMenuController : MonoBehaviour
     public float transferDuration = 10f;
 
 
-    // ===================================================== 
-    // EXIT CONTROLLER 
-    // ===================================================== 
+    // ============================================================
+    // EXIT CONTROLLER
+    // ============================================================
 
     [Header("Exit Controller")]
-
     public GameObject exitMenuController;
 
 
-    // ===================================================== 
-    // GAME MANAGER 
-    // ===================================================== 
+    // ============================================================
+    // GAME MANAGER
+    // ============================================================
 
     [Header("Game Manager")]
-
     public GameManager gameManager;
 
 
-    // ===================================================== 
-    // TCP 
-    // ===================================================== 
+    // ============================================================
+    // TCP
+    // ============================================================
 
     [Header("TCP")]
-
     public TCP tcp;
 
 
-    // ===================================================== 
-    // ANALYTICS 
-    // ===================================================== 
-
-    [Header("Analytics")]
-
-    public AnalyticsLogger analyticsLogger;
-
-
-    // ===================================================== 
-    // SELECTION COLORS 
-    // ===================================================== 
+    // ============================================================
+    // SELECTION COLORS
+    // ============================================================
 
     [Header("Selection Colors")]
-
     public Color selectedColor = Color.green;
-
     public Color normalColor = Color.white;
 
 
-    // ===================================================== 
-    // PRIVATE VARIABLES 
-    // ===================================================== 
+    // ============================================================
+    // PRIVATE VARIABLES
+    // ============================================================
 
-    private bool menuOpen = false;
-
-    private bool yesSelected = false;
-
+    private bool menuOpen;
+    private bool yesSelected;
     private bool stickReady = true;
 
     private bool startSystemActive = true;
-
-    private bool transferRunning = false;
+    private bool transferRunning;
 
     private CharacterController characterController;
 
+    private Image yesImage;
+    private Image noImage;
 
-    // ===================================================== 
-    // ENABLE 
-    // ===================================================== 
+
+    // ============================================================
+    // CONSTANTS
+    // ============================================================
+
+    private const float StickDeadZone = 0.3f;
+    private const float StickSelectionThreshold = 0.5f;
+
+
+    // ============================================================
+    // ENABLE / DISABLE
+    // ============================================================
 
     private void OnEnable()
     {
         if (!startSystemActive)
             return;
 
-        if (leftTriggerAction != null)
-            leftTriggerAction.action.Enable();
-
-        if (leftThumbstickAction != null)
-            leftThumbstickAction.action.Enable();
+        EnableAction(leftTriggerAction);
+        EnableAction(leftThumbstickAction);
     }
 
-
-    // ===================================================== 
-    // DISABLE 
-    // ===================================================== 
 
     private void OnDisable()
     {
-        // Input Actionها را اینجا Disable نمی‌کنیم.
-        //
-        // چون ExitMenuController از همان Trigger
-        // و Thumbstick استفاده می‌کند.
+        DisableAction(leftTriggerAction);
+        DisableAction(leftThumbstickAction);
     }
 
 
-    // ===================================================== 
-    // START 
-    // ===================================================== 
+    // ============================================================
+    // START
+    // ============================================================
 
     private void Start()
     {
-        // ================================================= 
-        // CHARACTER CONTROLLER 
-        // ================================================= 
+        InitializeReferences();
+        InitializeUIReferences();
+        InitializeStartRoom();
+        InitializeUI();
+    }
 
+
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+
+    private void InitializeReferences()
+    {
         if (player != null)
-        {
-            characterController =
-                player.GetComponent<CharacterController>();
-        }
-
-
-        // ================================================= 
-        // MOVE PLAYER TO START ROOM 
-        // ================================================= 
-
-        MovePlayerToStartRoom();
-
-
-        // ================================================= 
-        // CLOSE START PANEL 
-        // ================================================= 
-
-        if (startPanel != null)
-            startPanel.SetActive(false);
-
-
-        // ================================================= 
-        // CLOSE TRANSFER PANEL 
-        // ================================================= 
-
-        if (transferPanel != null)
-            transferPanel.SetActive(false);
-
-
-        // ================================================= 
-        // RESET SELECTION 
-        // ================================================= 
-
-        yesSelected = false;
-
-        UpdateSelection();
-
-
-        // ================================================= 
-        // FIND GAME MANAGER 
-        // ================================================= 
+            characterController = player.GetComponent<CharacterController>();
 
         if (gameManager == null)
-        {
-            gameManager =
-                FindFirstObjectByType<GameManager>();
-        }
-
-
-        // ================================================= 
-        // FIND TCP 
-        // ================================================= 
+            gameManager = FindFirstObjectByType<GameManager>();
 
         if (tcp == null)
-        {
-            tcp =
-                FindFirstObjectByType<TCP>();
-        }
+            tcp = FindFirstObjectByType<TCP>();
+    }
 
 
-        // ================================================= 
-        // FIND ANALYTICS LOGGER 
-        // ================================================= 
+    private void InitializeUIReferences()
+    {
+        if (yesButton != null)
+            yesImage = yesButton.GetComponent<Image>();
 
-        if (analyticsLogger == null)
-        {
-            analyticsLogger =
-                FindFirstObjectByType<AnalyticsLogger>();
-        }
-
-
-        // ================================================= 
-        // START START-ROOM TIMER 
-        // ================================================= 
-
-        if (analyticsLogger != null)
-        {
-            analyticsLogger.StartStartRoomTimer();
-        }
-        else
-        {
-            Debug.LogWarning(
-                "StartRoomController: AnalyticsLogger is not assigned!"
-            );
-        }
+        if (noButton != null)
+            noImage = noButton.GetComponent<Image>();
+    }
 
 
-        // ================================================= 
-        // EXIT CONTROLLER OFF 
-        // ================================================= 
+    private void InitializeStartRoom()
+    {
+        MovePlayerToStartRoom();
+
+        SetPanelActive(startPanel, false);
+        SetPanelActive(transferPanel, false);
 
         if (exitMenuController != null)
             exitMenuController.SetActive(false);
 
-
-        // ================================================= 
-        // HIDE ALL MAZE UI 
-        // ================================================= 
-
         if (gameManager != null)
-        {
             gameManager.SetMazeUI(false);
-        }
-
-
-        Debug.Log(
-            "Start Room initialized. " +
-            "Maze UI hidden."
-        );
     }
 
 
-    // ===================================================== 
-    // UPDATE 
-    // ===================================================== 
+    private void InitializeUI()
+    {
+        menuOpen = false;
+        yesSelected = false;
+        stickReady = true;
+        transferRunning = false;
+
+        UpdateSelection();
+
+        Debug.Log("Start Room initialized. Maze UI hidden.");
+    }
+
+
+    // ============================================================
+    // UPDATE
+    // ============================================================
 
     private void Update()
     {
-        if (!startSystemActive)
+        if (!startSystemActive || transferRunning)
             return;
 
-        if (transferRunning)
+        if (leftTriggerAction == null || leftThumbstickAction == null)
             return;
 
-        if (leftTriggerAction == null ||
-            leftThumbstickAction == null)
-            return;
-
-
-        // ================================================= 
-        // LEFT TRIGGER 
-        // ================================================= 
-
-        if (leftTriggerAction.action.WasPressedThisFrame())
-        {
-            if (!menuOpen)
-            {
-                OpenStartMenu();
-            }
-            else
-            {
-                ConfirmSelection();
-            }
-        }
-
+        HandleTriggerInput();
 
         if (!menuOpen)
             return;
 
-
-        // ================================================= 
-        // LEFT THUMBSTICK 
-        // ================================================= 
-
-        Vector2 stick =
-            leftThumbstickAction.action.ReadValue<Vector2>();
+        HandleThumbstickInput();
+    }
 
 
-        // ================================================= 
-        // THUMBSTICK RETURN TO CENTER 
-        // ================================================= 
+    // ============================================================
+    // TRIGGER INPUT
+    // ============================================================
 
-        if (Mathf.Abs(stick.x) < 0.3f)
+    private void HandleTriggerInput()
+    {
+        if (!leftTriggerAction.action.WasPressedThisFrame())
+            return;
+
+        if (!menuOpen)
         {
-            stickReady = true;
+            OpenStartMenu();
         }
+        else
+        {
+            ConfirmSelection();
+        }
+    }
 
 
-        // ================================================= 
-        // LEFT = YES 
-        // ================================================= 
+    // ============================================================
+    // THUMBSTICK INPUT
+    // ============================================================
 
-        if (stickReady && stick.x < -0.5f)
+    private void HandleThumbstickInput()
+    {
+        Vector2 stick = leftThumbstickAction.action.ReadValue<Vector2>();
+
+        float horizontalInput = stick.x;
+
+
+        // Reset when stick returns to center
+        if (Mathf.Abs(horizontalInput) < StickDeadZone)
+            stickReady = true;
+
+
+        if (!stickReady)
+            return;
+
+
+        // LEFT = YES
+        if (horizontalInput < -StickSelectionThreshold)
         {
             yesSelected = true;
-
             stickReady = false;
 
             UpdateSelection();
@@ -351,14 +275,10 @@ public class StartGameMenuController : MonoBehaviour
         }
 
 
-        // ================================================= 
-        // RIGHT = NO 
-        // ================================================= 
-
-        else if (stickReady && stick.x > 0.5f)
+        // RIGHT = NO
+        else if (horizontalInput > StickSelectionThreshold)
         {
             yesSelected = false;
-
             stickReady = false;
 
             UpdateSelection();
@@ -368,26 +288,25 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // MOVE PLAYER TO START ROOM 
-    // ===================================================== 
+    // ============================================================
+    // MOVE PLAYER TO START ROOM
+    // ============================================================
 
     private void MovePlayerToStartRoom()
     {
         if (player == null)
         {
             Debug.LogWarning(
-                "StartRoomController: Player is not assigned!"
+                "StartGameMenuController: Player is not assigned."
             );
 
             return;
         }
 
-
         if (startSpawnPoint == null)
         {
             Debug.LogWarning(
-                "StartRoomController: Start Spawn Point is not assigned!"
+                "StartGameMenuController: Start Spawn Point is not assigned."
             );
 
             return;
@@ -408,73 +327,62 @@ public class StartGameMenuController : MonoBehaviour
             characterController.enabled = true;
 
 
-        Debug.Log(
-            "Player moved to Start Room Spawn Point."
-        );
+        Debug.Log("Player moved to Start Room Spawn Point.");
     }
 
 
-    // ===================================================== 
-    // OPEN START MENU 
-    // ===================================================== 
+    // ============================================================
+    // OPEN START MENU
+    // ============================================================
 
     private void OpenStartMenu()
     {
-        if (!startSystemActive)
-            return;
-
-        if (transferRunning)
+        if (!startSystemActive || transferRunning)
             return;
 
 
         menuOpen = true;
-
-
-        if (startPanel != null)
-            startPanel.SetActive(true);
-
-
         yesSelected = false;
-
         stickReady = true;
+
 
         UpdateSelection();
 
 
-        // ================================================= 
-        // REGISTER PANEL OPEN TIME IN GAME MANAGER
-        // ================================================= 
+        SetPanelActive(startPanel, true);
+
 
         if (gameManager != null)
         {
             gameManager.OpenStartQuestionPanel();
         }
+        else
+        {
+            Debug.LogError(
+                "StartGameMenuController: GameManager is NULL!"
+            );
+        }
+
+
+        SendTCPEvent(
+            "PANEL_OPENED_START_QUESTION",
+            "PANEL_EVENT",
+            "Start Question Panel opened."
+        );
 
 
         Debug.Log(
-            "Start menu opened."
+            "========== START QUESTION PANEL OPENED =========="
         );
     }
 
 
-    // ===================================================== 
-    // UPDATE SELECTION 
-    // ===================================================== 
+    // ============================================================
+    // UPDATE YES / NO VISUAL
+    // ============================================================
 
     private void UpdateSelection()
     {
-        if (yesButton == null ||
-            noButton == null)
-            return;
-
-
-        Image yesImage =
-            yesButton.GetComponent<Image>();
-
-        Image noImage =
-            noButton.GetComponent<Image>();
-
-
         if (yesImage != null)
         {
             yesImage.color =
@@ -494,16 +402,13 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // CONFIRM SELECTION 
-    // ===================================================== 
+    // ============================================================
+    // CONFIRM SELECTION
+    // ============================================================
 
     private void ConfirmSelection()
     {
-        if (!startSystemActive)
-            return;
-
-        if (transferRunning)
+        if (!startSystemActive || transferRunning)
             return;
 
 
@@ -518,16 +423,13 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // YES 
-    // ===================================================== 
+    // ============================================================
+    // YES / START GAME
+    // ============================================================
 
     private void StartGame()
     {
-        if (!startSystemActive)
-            return;
-
-        if (transferRunning)
+        if (!startSystemActive || transferRunning)
             return;
 
 
@@ -536,51 +438,18 @@ public class StartGameMenuController : MonoBehaviour
         );
 
 
-        // ================================================= 
-        // SAVE START ROOM TIME 
-        // ================================================= 
-
-        if (analyticsLogger != null)
-        {
-            analyticsLogger.SaveStartRoomTime();
-        }
-
-
-        // ================================================= 
-        // REGISTER YES IMMEDIATELY
-        // ================================================= 
-        //
-        // اینجا YES ثبت می‌شود؛ یعنی دقیقاً زمانی که
-        // بازیکن YES را تأیید می‌کند.
-        //
-        // بنابراین زمان Start Room و Start Question Panel
-        // قبل از شروع Transfer ثبت می‌شوند.
-        // ================================================= 
-
         if (gameManager != null)
-        {
             gameManager.RegisterStartRoomYes();
-        }
 
-
-        // ================================================= 
-        // CLOSE START MENU 
-        // ================================================= 
 
         menuOpen = false;
 
 
-        if (startPanel != null)
-            startPanel.SetActive(false);
+        SetPanelActive(
+            startPanel,
+            false
+        );
 
-
-        // ================================================= 
-        // PANEL CLOSED EVENT
-        // ================================================= 
-        //
-        // چون پنل همینجا بعد از YES بسته می‌شود،
-        // Event بسته شدن هم همینجا ثبت می‌شود.
-        // ================================================= 
 
         SendTCPEvent(
             "PANEL_CLOSED_START_QUESTION",
@@ -588,10 +457,6 @@ public class StartGameMenuController : MonoBehaviour
             "Start Question Panel closed after YES."
         );
 
-
-        // ================================================= 
-        // START TRANSFER 
-        // ================================================= 
 
         transferRunning = true;
 
@@ -602,16 +467,13 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // NO 
-    // ===================================================== 
+    // ============================================================
+    // NO / STAY IN START ROOM
+    // ============================================================
 
     private void SelectNo()
     {
-        if (!startSystemActive)
-            return;
-
-        if (transferRunning)
+        if (!startSystemActive || transferRunning)
             return;
 
 
@@ -620,10 +482,6 @@ public class StartGameMenuController : MonoBehaviour
         );
 
 
-        // ================================================= 
-        // TCP EVENT 
-        // ================================================= 
-
         SendTCPEvent(
             "START_ROOM_NO",
             "BUTTON_EVENT",
@@ -631,16 +489,8 @@ public class StartGameMenuController : MonoBehaviour
         );
 
 
-        // ================================================= 
-        // CLOSE MENU 
-        // ================================================= 
-
         CloseStartMenu();
 
-
-        // ================================================= 
-        // TCP EVENT 
-        // ================================================= 
 
         SendTCPEvent(
             "PANEL_CLOSED_START_QUESTION",
@@ -650,23 +500,17 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // TRANSFER TO MAZE 
-    // ================================================= 
+    // ============================================================
+    // TRANSFER TO MAZE
+    // ============================================================
 
     private IEnumerator TransferToMaze()
     {
-        // ================================================= 
-        // OPEN TRANSFER PANEL 
-        // ================================================= 
+        SetPanelActive(
+            transferPanel,
+            true
+        );
 
-        if (transferPanel != null)
-            transferPanel.SetActive(true);
-
-
-        // ================================================= 
-        // TCP EVENT 
-        // ================================================= 
 
         SendTCPEvent(
             "PANEL_OPENED_TRANSFER",
@@ -675,27 +519,20 @@ public class StartGameMenuController : MonoBehaviour
         );
 
 
-        // ================================================= 
-        // COUNTDOWN 
-        // ================================================= 
-
-        float remainingTime =
-            transferDuration;
+        float remainingTime = transferDuration;
 
 
         while (remainingTime > 0f)
         {
             int seconds =
-                Mathf.CeilToInt(
-                    remainingTime
-                );
+                Mathf.CeilToInt(remainingTime);
 
 
             if (transferText != null)
             {
                 transferText.text =
                     "Transferring...\n" +
-                    seconds.ToString();
+                    seconds;
             }
 
 
@@ -707,10 +544,6 @@ public class StartGameMenuController : MonoBehaviour
         }
 
 
-        // ================================================= 
-        // SHOW ZERO 
-        // ================================================= 
-
         if (transferText != null)
         {
             transferText.text =
@@ -718,22 +551,14 @@ public class StartGameMenuController : MonoBehaviour
         }
 
 
-        yield return new WaitForSeconds(
-            0.2f
+        yield return new WaitForSeconds(0.2f);
+
+
+        SetPanelActive(
+            transferPanel,
+            false
         );
 
-
-        // ================================================= 
-        // CLOSE TRANSFER PANEL 
-        // ================================================= 
-
-        if (transferPanel != null)
-            transferPanel.SetActive(false);
-
-
-        // ================================================= 
-        // TCP EVENT 
-        // ================================================= 
 
         SendTCPEvent(
             "PANEL_CLOSED_TRANSFER",
@@ -742,100 +567,53 @@ public class StartGameMenuController : MonoBehaviour
         );
 
 
-        // ================================================= 
-        // LOCK START SYSTEM 
-        // ================================================= 
-
+        // Disable Start Room system
         startSystemActive = false;
-
         menuOpen = false;
-
         yesSelected = false;
 
 
-        // ================================================= 
-        // CLOSE START PANEL 
-        // ================================================= 
-
-        if (startPanel != null)
-            startPanel.SetActive(false);
+        SetPanelActive(
+            startPanel,
+            false
+        );
 
 
-        // ================================================= 
-        // MAKE SURE MAZE UI IS STILL HIDDEN 
-        // ================================================= 
-
+        // Keep Maze UI controlled by GameManager
         if (gameManager != null)
-        {
             gameManager.SetMazeUI(false);
-        }
 
 
-        // ================================================= 
-        // START GAME 
-        // ================================================= 
-
+        // Start Maze 1
         if (gameManager != null)
         {
-            // ================================================= 
-            // GameManager از اینجا به بعد مسئول شروع بازی است.
-            //
-            // START_ROOM_YES قبلاً ثبت شده.
-            //
-            // اینجا GAME_STARTED و MAZE_STARTED
-            // طبق منطق GameManager ثبت می‌شوند.
-            // ================================================= 
-
             gameManager.StartGameFromMaze1();
         }
         else
         {
             Debug.LogWarning(
-                "StartRoomController: GameManager is not assigned!"
+                "StartGameMenuController: GameManager is not assigned!"
             );
         }
 
 
-        // ================================================= 
-        // DISABLE START ROOM 
-        // ================================================= 
+        // Disable Start Room
+        SetPanelActive(
+            startRoom,
+            false
+        );
 
-        if (startRoom != null)
-            startRoom.SetActive(false);
 
-
-        // ================================================= 
-        // DISABLE START CONTROLLER 
-        // ================================================= 
-
+        // Disable this Start Room system
         enabled = false;
 
 
-        // ================================================= 
-        // ENABLE EXIT CONTROLLER 
-        // ================================================= 
-
+        // Enable Exit Controller
         if (exitMenuController != null)
-        {
             exitMenuController.SetActive(true);
-        }
 
-
-        // ================================================= 
-        // RESET TRANSFER STATE 
-        // ================================================= 
 
         transferRunning = false;
-
-
-        // ================================================= 
-        // IMPORTANT 
-        // ================================================= 
-        // 
-        // Maze UI را اینجا فعال نمی‌کنیم.
-        // GameManager.StartGameFromMaze1()
-        // خودش آن را کنترل می‌کند.
-        // ================================================= 
 
 
         Debug.Log(
@@ -847,9 +625,9 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // CLOSE START MENU 
-    // ===================================================== 
+    // ============================================================
+    // CLOSE START MENU
+    // ============================================================
 
     private void CloseStartMenu()
     {
@@ -860,8 +638,10 @@ public class StartGameMenuController : MonoBehaviour
         menuOpen = false;
 
 
-        if (startPanel != null)
-            startPanel.SetActive(false);
+        SetPanelActive(
+            startPanel,
+            false
+        );
 
 
         Debug.Log(
@@ -870,30 +650,54 @@ public class StartGameMenuController : MonoBehaviour
     }
 
 
-    // ===================================================== 
-    // TCP EVENT 
-    // ===================================================== 
+    // ============================================================
+    // PANEL ACTIVE HELPER
+    // ============================================================
+
+    private void SetPanelActive(
+        GameObject panel,
+        bool active)
+    {
+        if (panel != null &&
+            panel.activeSelf != active)
+        {
+            panel.SetActive(active);
+        }
+    }
+
+
+    // ============================================================
+    // INPUT ACTION HELPERS
+    // ============================================================
+
+    private void EnableAction(
+        InputActionReference actionReference)
+    {
+        if (actionReference != null)
+            actionReference.action.Enable();
+    }
+
+
+    private void DisableAction(
+        InputActionReference actionReference)
+    {
+        if (actionReference != null)
+            actionReference.action.Disable();
+    }
+
+
+    // ============================================================
+    // TCP EVENT
+    // ============================================================
 
     private void SendTCPEvent(
         string eventName,
         string eventType = "GAME_EVENT",
-        string eventMessage = ""
-    )
+        string eventMessage = "")
     {
-        // ------------------------------------------------- 
-        // FIND TCP IF NEEDED 
-        // ------------------------------------------------- 
-
         if (tcp == null)
-        {
-            tcp =
-                FindFirstObjectByType<TCP>();
-        }
+            tcp = FindFirstObjectByType<TCP>();
 
-
-        // ------------------------------------------------- 
-        // SEND EVENT 
-        // ------------------------------------------------- 
 
         if (tcp != null)
         {
@@ -906,23 +710,19 @@ public class StartGameMenuController : MonoBehaviour
         else
         {
             Debug.LogWarning(
-                "StartGameMenuController: TCP reference " +
-                "is not assigned/found.\n" +
+                "StartGameMenuController: " +
+                "TCP reference is not assigned/found.\n" +
                 "Event was not sent: " +
                 eventName
             );
         }
 
 
-        // ------------------------------------------------- 
-        // DEBUG 
-        // ------------------------------------------------- 
-
         Debug.Log(
             "========== TCP EVENT ==========\n" +
-            "Type: " + eventType +
-            "\nEvent: " + eventName +
-            "\nMessage: " + eventMessage
+            "Type: " + eventType + "\n" +
+            "Event: " + eventName + "\n" +
+            "Message: " + eventMessage
         );
     }
 }

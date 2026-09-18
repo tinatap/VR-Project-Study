@@ -687,8 +687,7 @@ public class TCPAnalyticsClient : MonoBehaviour
         message.startRoomDuration =
             record.startRoomDuration;
 
-        message.startQuestionPanelDuration =
-            record.startQuestionPanelDuration;
+     
 
 
         message.timestamp =
@@ -765,8 +764,8 @@ public class TCPAnalyticsClient : MonoBehaviour
     // =====================================================
 
     public async void SendStartRoomSummary(
-        float startRoomDuration,
-        float startQuestionPanelDuration
+        float startRoomDuration
+        
     )
     {
         StartRoomTCPMessage message =
@@ -779,9 +778,6 @@ public class TCPAnalyticsClient : MonoBehaviour
 
         message.startRoomDuration =
             startRoomDuration;
-
-        message.startQuestionPanelDuration =
-            startQuestionPanelDuration;
 
 
         message.timestamp =
@@ -1149,7 +1145,7 @@ public class MazeVisitTCPMessage
     public string result;
 
     public float startRoomDuration;
-    public float startQuestionPanelDuration;
+  
 
     public string timestamp;
 }
@@ -1190,7 +1186,7 @@ public class StartRoomTCPMessage
 
     public float startRoomDuration;
 
-    public float startQuestionPanelDuration;
+    
 
     public string timestamp;
 }

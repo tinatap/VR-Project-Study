@@ -11,9 +11,7 @@ public class StartRoomAvatarInspect : MonoBehaviour
     [Header("References")]
 
     public Transform avatar;
-
     public Transform xrOrigin;
-
     public VRThirdPersonController avatarController;
 
 
@@ -53,11 +51,12 @@ public class StartRoomAvatarInspect : MonoBehaviour
     // PRIVATE
     // =====================================================
 
-    private bool inspecting = false;
-
-    private bool gripHeld = false;
-
+    private bool inspecting;
+    private bool gripHeld;
     private float currentAngle;
+
+    private const float GripThreshold = 0.1f;
+    private const float DirectionThreshold = 0.001f;
 
 
     // =====================================================
@@ -79,6 +78,20 @@ public class StartRoomAvatarInspect : MonoBehaviour
     {
         if (rightGripAction != null)
             rightGripAction.action.Disable();
+
+        // اطمینان از اینکه در صورت Disable شدن اسکریپت
+        // Avatar در حالت قفل باقی نماند
+        if (inspecting)
+        {
+            inspecting = false;
+            gripHeld = false;
+
+            if (avatarController != null)
+            {
+                avatarController.SetMovementLocked(false);
+                avatarController.allowCameraFollow = true;
+            }
+        }
     }
 
 
@@ -88,63 +101,57 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
     private void Update()
     {
-        // =================================================
-        // فقط در Start Room
-        // =================================================
-
-        if (startRoom == null ||
-            !startRoom.activeInHierarchy)
-        {
+        if (!IsStartRoomActive())
             return;
-        }
-
 
         if (rightGripAction == null)
             return;
 
-
-        // =================================================
-        // خواندن Grip
-        // =================================================
-
-        float grip =
-            rightGripAction.action.ReadValue<float>();
-
-
         bool newGripHeld =
-            grip > 0.1f;
+            rightGripAction.action.ReadValue<float>() >
+            GripThreshold;
 
 
         // =================================================
-        // Grip Press
+        // GRIP PRESSED
         // =================================================
 
         if (newGripHeld && !gripHeld)
         {
             gripHeld = true;
-
             StartInspect();
+            return;
         }
 
 
         // =================================================
-        // Grip Hold
+        // GRIP HELD
         // =================================================
 
-        if (gripHeld)
+        if (!gripHeld)
+            return;
+
+        if (newGripHeld)
         {
-            if (newGripHeld)
-            {
-                RotateCameraAroundAvatar();
-            }
-            else
-            {
-                // Grip رها شده
-                gripHeld = false;
-
-                ExitInspect();
-            }
+            RotateCameraAroundAvatar();
         }
+        else
+        {
+            gripHeld = false;
+            ExitInspect();
+        }
+    }
+
+
+    // =====================================================
+    // START ROOM CHECK
+    // =====================================================
+
+    private bool IsStartRoomActive()
+    {
+        return
+            startRoom != null &&
+            startRoom.activeInHierarchy;
     }
 
 
@@ -156,40 +163,39 @@ public class StartRoomAvatarInspect : MonoBehaviour
     {
         if (avatar == null ||
             xrOrigin == null)
+        {
             return;
-
+        }
 
         inspecting = true;
 
 
         // =================================================
-        // قفل Avatar
+        // LOCK AVATAR
         // =================================================
 
         if (avatarController != null)
         {
             avatarController.SetMovementLocked(true);
 
-            // جلوگیری از اینکه Controller
-            // XR Origin را پشت Avatar ببرد
+            // جلوگیری از Follow شدن خودکار دوربین
+            // هنگام Inspect
             avatarController.allowCameraFollow = false;
         }
 
 
         // =================================================
-        // محاسبه زاویه فعلی دوربین
-        // از موقعیت فعلی XR Origin
+        // CALCULATE CURRENT CAMERA ANGLE
         // =================================================
 
         Vector3 direction =
             xrOrigin.position -
             avatar.position;
 
-
         direction.y = 0f;
 
-
-        if (direction.sqrMagnitude > 0.001f)
+        if (direction.sqrMagnitude >
+            DirectionThreshold)
         {
             currentAngle =
                 Mathf.Atan2(
@@ -207,17 +213,16 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
     private void RotateCameraAroundAvatar()
     {
-        if (!inspecting)
-            return;
-
-
-        if (avatar == null ||
+        if (!inspecting ||
+            avatar == null ||
             xrOrigin == null)
+        {
             return;
+        }
 
 
         // =================================================
-        // چرخش خودکار
+        // UPDATE ANGLE
         // =================================================
 
         currentAngle +=
@@ -226,7 +231,7 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
 
         // =================================================
-        // ساخت Rotation
+        // CALCULATE POSITION
         // =================================================
 
         Quaternion rotation =
@@ -236,23 +241,10 @@ public class StartRoomAvatarInspect : MonoBehaviour
                 0f
             );
 
-
-        // =================================================
-        // فاصله دوربین از Avatar
-        // =================================================
-
         Vector3 offset =
             rotation *
-            new Vector3(
-                0f,
-                0f,
-                orbitDistance
-            );
-
-
-        // =================================================
-        // موقعیت XR Origin
-        // =================================================
+            Vector3.forward *
+            orbitDistance;
 
         Vector3 cameraPosition =
             avatar.position +
@@ -260,8 +252,7 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
 
         // =================================================
-        // ارتفاع دوربین
-        // فقط از VRThirdPersonController
+        // CAMERA HEIGHT
         // =================================================
 
         if (avatarController != null)
@@ -277,15 +268,15 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
 
         // =================================================
-        // نگاه کردن به Avatar
+        // LOOK AT AVATAR
         // =================================================
 
         Vector3 lookDirection =
             avatar.position -
             xrOrigin.position;
 
-
-        if (lookDirection.sqrMagnitude > 0.001f)
+        if (lookDirection.sqrMagnitude >
+            DirectionThreshold)
         {
             xrOrigin.rotation =
                 Quaternion.LookRotation(
@@ -306,19 +297,18 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
 
         // =================================================
-        // باز کردن کنترل Avatar
+        // UNLOCK AVATAR
         // =================================================
 
         if (avatarController != null)
         {
             avatarController.SetMovementLocked(false);
-
             avatarController.allowCameraFollow = true;
         }
 
 
         // =================================================
-        // برگرداندن دوربین پشت Avatar
+        // RETURN CAMERA BEHIND AVATAR
         // =================================================
 
         ReturnBehindAvatar();
@@ -333,22 +323,28 @@ public class StartRoomAvatarInspect : MonoBehaviour
     {
         if (avatar == null ||
             xrOrigin == null)
+        {
             return;
+        }
 
 
         Vector3 back =
             -avatar.forward;
 
-
         back.y = 0f;
 
-
-        if (back.sqrMagnitude < 0.001f)
+        if (back.sqrMagnitude <
+            DirectionThreshold)
+        {
             return;
-
+        }
 
         back.Normalize();
 
+
+        // =================================================
+        // POSITION
+        // =================================================
 
         Vector3 position =
             avatar.position +
@@ -357,8 +353,7 @@ public class StartRoomAvatarInspect : MonoBehaviour
 
 
         // =================================================
-        // ارتفاع دوربین
-        // فقط از VRThirdPersonController
+        // HEIGHT
         // =================================================
 
         if (avatarController != null)
@@ -372,6 +367,10 @@ public class StartRoomAvatarInspect : MonoBehaviour
         xrOrigin.position =
             position;
 
+
+        // =================================================
+        // ROTATION
+        // =================================================
 
         xrOrigin.rotation =
             Quaternion.Euler(

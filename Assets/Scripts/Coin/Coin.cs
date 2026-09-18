@@ -3,43 +3,86 @@ using UnityEngine;
 public class Coin : MonoBehaviour
 {
     [Header("Coin Collect Sound")]
-    public AudioClip collectSound;
+
+    [SerializeField]
+    private AudioClip collectSound;
 
     [Range(0f, 1f)]
-    public float volume = 1f;
+    [SerializeField]
+    private float volume = 1f;
 
+
+    // =====================================================
+    // GAME MANAGER
+    // =====================================================
+
+    private GameManager gameManager;
+
+    private bool collected = false;
+
+
+    // =====================================================
+    // AWAKE
+    // =====================================================
+
+    private void Awake()
+    {
+        gameManager =
+            FindFirstObjectByType<GameManager>();
+    }
+
+
+    // =====================================================
+    // COLLECT COIN
+    // =====================================================
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (collected)
+            return;
+
+        if (!other.CompareTag("Player"))
+            return;
+
+        if (gameManager == null)
         {
-            GameManager gm =
-                FindFirstObjectByType<GameManager>();
+            Debug.LogWarning(
+                "Coin could not find GameManager."
+            );
 
-            if (gm != null)
-            {
-                gm.CollectCoin();
-
-                // =========================================
-                // PLAY COLLECT SOUND
-                // =========================================
-
-                if (collectSound != null)
-                {
-                    AudioSource.PlayClipAtPoint(
-                        collectSound,
-                        transform.position,
-                        volume
-                    );
-                }
-
-
-                // =========================================
-                // DISABLE COIN
-                // =========================================
-
-                Destroy(gameObject);
-            }
+            return;
         }
+
+
+        // Prevent double collection
+        collected = true;
+
+
+        // =================================================
+        // REGISTER COIN
+        // =================================================
+
+        gameManager.CollectCoin();
+
+
+        // =================================================
+        // PLAY COLLECT SOUND
+        // =================================================
+
+        if (collectSound != null)
+        {
+            AudioSource.PlayClipAtPoint(
+                collectSound,
+                transform.position,
+                volume
+            );
+        }
+
+
+        // =================================================
+        // DESTROY COIN
+        // =================================================
+
+        Destroy(gameObject);
     }
 }

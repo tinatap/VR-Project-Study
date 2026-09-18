@@ -2,28 +2,48 @@ using UnityEngine;
 
 public class MusicManager : MonoBehaviour
 {
+    // =====================================================
+    // MUSIC MODE
+    // =====================================================
+
     public enum MusicMode
     {
-        Calm,
-        Rhythmic,
+        Relaxing,
+        Motivating,
         NoMusic
     }
 
 
     [Header("Music Settings")]
+    public MusicMode musicMode = MusicMode.Relaxing;
 
-    public MusicMode musicMode = MusicMode.Calm;
 
+    // =====================================================
+    // MUSIC VOLUME
+    // =====================================================
+
+    [Header("Music Volume")]
+    [Range(0f, 1f)]
+    public float relaxingVolume = 0.8f;
+
+    [Range(0f, 1f)]
+    public float motivatingVolume = 0.1f;
+
+
+    // =====================================================
+    // AUDIO CLIPS
+    // =====================================================
 
     [Header("Audio Clips")]
+    public AudioClip relaxingMusic;
+    public AudioClip motivatingMusic;
 
-    public AudioClip calmMusic;
 
-    public AudioClip rhythmicMusic;
-
+    // =====================================================
+    // AUDIO SOURCE
+    // =====================================================
 
     [Header("Audio Source")]
-
     public AudioSource audioSource;
 
 
@@ -33,22 +53,32 @@ public class MusicManager : MonoBehaviour
 
     private void Start()
     {
+        if (!InitializeAudioSource())
+            return;
+
+        ApplyMusicMode();
+    }
+
+
+    // =====================================================
+    // INITIALIZE AUDIO SOURCE
+    // =====================================================
+
+    private bool InitializeAudioSource()
+    {
         if (audioSource == null)
         {
             Debug.LogWarning(
                 "MusicManager: AudioSource is not assigned!"
             );
 
-            return;
+            return false;
         }
 
-
         audioSource.loop = true;
-
         audioSource.playOnAwake = false;
 
-
-        ApplyMusicMode();
+        return true;
     }
 
 
@@ -70,31 +100,24 @@ public class MusicManager : MonoBehaviour
 
         switch (musicMode)
         {
-            case MusicMode.Calm:
-
-                PlayMusic(calmMusic);
-
+            case MusicMode.Relaxing:
+                PlayMusic(relaxingMusic, relaxingVolume);
                 break;
 
 
-            case MusicMode.Rhythmic:
-
-                PlayMusic(rhythmicMusic);
-
+            case MusicMode.Motivating:
+                PlayMusic(motivatingMusic, motivatingVolume);
                 break;
 
 
             case MusicMode.NoMusic:
-
                 StopMusic();
-
                 break;
         }
 
 
         Debug.Log(
-            "Music mode applied: " +
-            musicMode
+            "Music mode applied: " + musicMode
         );
     }
 
@@ -103,9 +126,7 @@ public class MusicManager : MonoBehaviour
     // PLAY MUSIC
     // =====================================================
 
-    private void PlayMusic(
-        AudioClip clip
-    )
+    private void PlayMusic(AudioClip clip, float volume)
     {
         if (clip == null)
         {
@@ -117,12 +138,12 @@ public class MusicManager : MonoBehaviour
         }
 
 
-        // اگر همان آهنگ در حال پخش است
-        if (
-            audioSource.isPlaying &&
-            audioSource.clip == clip
-        )
+        // اگر همان آهنگ همین الان در حال پخش است،
+        // فقط Volume را به‌روزرسانی کن.
+        if (audioSource.isPlaying &&
+            audioSource.clip == clip)
         {
+            audioSource.volume = volume;
             return;
         }
 
@@ -130,7 +151,7 @@ public class MusicManager : MonoBehaviour
         audioSource.Stop();
 
         audioSource.clip = clip;
-
+        audioSource.volume = volume;
         audioSource.loop = true;
 
         audioSource.Play();
@@ -138,13 +159,15 @@ public class MusicManager : MonoBehaviour
 
 
     // =====================================================
-    // STOP
+    // STOP MUSIC
     // =====================================================
 
     private void StopMusic()
     {
-        audioSource.Stop();
+        if (audioSource == null)
+            return;
 
+        audioSource.Stop();
         audioSource.clip = null;
     }
 
@@ -155,11 +178,10 @@ public class MusicManager : MonoBehaviour
 
     public void StopBackgroundMusic()
     {
-        if (audioSource != null)
-        {
-            audioSource.Stop();
+        if (audioSource == null)
+            return;
 
-            audioSource.clip = null;
-        }
+        audioSource.Stop();
+        audioSource.clip = null;
     }
 }

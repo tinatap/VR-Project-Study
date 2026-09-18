@@ -3,10 +3,59 @@ import struct
 import json
 import os
 import threading
-import time
+import csv
+import re
 from datetime import datetime
 
-from openpyxl import Workbook, load_workbook
+
+# ============================================================
+# PARTICIPANT INFORMATION
+# ============================================================
+
+print()
+print("==========================================")
+print("PARTICIPANT INFORMATION")
+print("==========================================")
+
+PARTICIPANT_NAME = input("Participant Name: ").strip()
+PARTICIPANT_ID = input("Participant ID: ").strip()
+
+if not PARTICIPANT_NAME:
+    PARTICIPANT_NAME = "Unknown"
+
+if not PARTICIPANT_ID:
+    PARTICIPANT_ID = "Unknown"
+
+print()
+print("Participant Name:", PARTICIPANT_NAME)
+print("Participant ID:", PARTICIPANT_ID)
+
+
+# ============================================================
+# SAFE FILE / FOLDER NAME
+# ============================================================
+
+def make_safe_name(name):
+
+    # Replace characters that are not allowed in Windows filenames
+    name = re.sub(r'[<>:"/\\|?*]', '_', name)
+
+    # Replace multiple spaces with one underscore
+    name = re.sub(r'\s+', '_', name)
+
+    # Remove unnecessary dots/spaces from beginning/end
+    name = name.strip(" ._")
+
+    if not name:
+        name = "Unknown"
+
+    return name
+
+
+SAFE_NAME = make_safe_name(PARTICIPANT_NAME)
+SAFE_ID = make_safe_name(PARTICIPANT_ID)
+
+PARTICIPANT_FOLDER_NAME = f"{SAFE_NAME}_{SAFE_ID}"
 
 
 # ============================================================
@@ -16,87 +65,124 @@ from openpyxl import Workbook, load_workbook
 HOST = "0.0.0.0"
 PORT = 12345
 
+# Main analytics folder
 DATA_FOLDER = "analytics_data"
 
 os.makedirs(DATA_FOLDER, exist_ok=True)
 
 
 # ============================================================
-# CONTINUOUS DATA FILES
+# PARTICIPANT-SPECIFIC FOLDER
+# ============================================================
+
+PARTICIPANT_FOLDER = os.path.join(
+    DATA_FOLDER,
+    PARTICIPANT_FOLDER_NAME
+)
+
+os.makedirs(
+    PARTICIPANT_FOLDER,
+    exist_ok=True
+)
+
+
+# ============================================================
+# PARTICIPANT-SPECIFIC FILES
 # ============================================================
 
 DATA_FILE = os.path.join(
-    DATA_FOLDER,
-    "continuous_data.jsonl"
+    PARTICIPANT_FOLDER,
+    f"continuous_data_{SAFE_NAME}_{SAFE_ID}.jsonl"
 )
 
-EXCEL_FILE = os.path.join(
-    DATA_FOLDER,
-    "continuous_data.xlsx"
+CSV_FILE = os.path.join(
+    PARTICIPANT_FOLDER,
+    f"continuous_data_{SAFE_NAME}_{SAFE_ID}.csv"
 )
-
-
-# ============================================================
-# EXPERIMENT SUMMARY FILE
-# ============================================================
 
 SUMMARY_FILE = os.path.join(
-    DATA_FOLDER,
-    "experiment_summary.json"
+    PARTICIPANT_FOLDER,
+    f"experiment_summary_{SAFE_NAME}_{SAFE_ID}.json"
 )
 
 
 # ============================================================
-# EXCEL SETTINGS
-# ============================================================
-
-EXCEL_SAVE_INTERVAL = 10
-
-
-# ============================================================
-# EXCEL VARIABLES
-# ============================================================
-
-excel_lock = threading.Lock()
-
-excel_dirty = False
-
-excel_running = True
-
-
-# ============================================================
-# CREATE EXCEL
+# DISPLAY STORAGE INFORMATION
 # ============================================================
 
 print()
-print("Creating Excel file...")
+print("==========================================")
+print("PARTICIPANT STORAGE")
+print("==========================================")
+
+print(
+    "Participant folder:",
+    PARTICIPANT_FOLDER
+)
+
+print(
+    "Continuous JSON:",
+    DATA_FILE
+)
+
+print(
+    "Continuous CSV:",
+    CSV_FILE
+)
+
+print(
+    "Experiment Summary:",
+    SUMMARY_FILE
+)
+
+print("==========================================")
+print()
+
+
+# ============================================================
+# CSV VARIABLES
+# ============================================================
+
+csv_lock = threading.Lock()
+
+csv_file = None
+csv_writer = None
+
+csv_headers = []
+
+CSV_FLUSH_EVERY_ROW = True
+
+
+# ============================================================
+# CREATE CSV
+# ============================================================
+
+print()
+print("Creating CSV file...")
 
 try:
 
-    workbook = Workbook()
+    csv_exists = os.path.isfile(CSV_FILE)
 
-    sheet = workbook.active
-
-    sheet.title = "Data"
-
-    workbook.save(
-        EXCEL_FILE
-    )
-
-    workbook.close()
-
-    print(
-        "Excel file created successfully:"
+    csv_file = open(
+        CSV_FILE,
+        "a+",
+        newline="",
+        encoding="utf-8-sig"
     )
 
     print(
-        EXCEL_FILE
+        "CSV file ready:"
+    )
+
+    print(
+        CSV_FILE
     )
 
 except Exception as e:
 
     print(
-        "!!! EXCEL CREATION ERROR !!!"
+        "!!! CSV CREATION ERROR !!!"
     )
 
     print(
@@ -107,164 +193,327 @@ except Exception as e:
 
 
 # ============================================================
-# OPEN EXCEL
+# LOAD EXISTING CSV HEADERS
 # ============================================================
 
-workbook = load_workbook(
-    EXCEL_FILE
-)
+def load_csv_headers():
 
-sheet = workbook["Data"]
+    global csv_headers
+    global csv_writer
 
-headers = {}
+    try:
+
+        if os.path.isfile(CSV_FILE):
+
+            csv_file.seek(0)
+
+            first_line = csv_file.readline()
+
+            if first_line.strip():
+
+                csv_headers = next(
+                    csv.reader(
+                        [first_line]
+                    )
+                )
+
+                csv_file.seek(
+                    0,
+                    os.SEEK_END
+                )
+
+                csv_writer = csv.DictWriter(
+                    csv_file,
+                    fieldnames=csv_headers,
+                    extrasaction="ignore"
+                )
+
+                print(
+                    "Existing CSV headers loaded:"
+                )
+
+                print(
+                    csv_headers
+                )
+
+    except Exception as e:
+
+        print(
+            "!!! CSV HEADER LOAD ERROR !!!"
+        )
+
+        print(
+            repr(e)
+        )
+
+
+load_csv_headers()
 
 
 # ============================================================
-# ADD HEADER
+# CONVERT VALUE FOR CSV
 # ============================================================
 
-def get_column(key):
+def convert_value_for_csv(value):
 
-    global headers
+    if value is None:
 
-    if key in headers:
-        return headers[key]
+        return ""
 
+    if isinstance(value, bool):
 
-    # --------------------------------------------------------
-    # New column
-    # --------------------------------------------------------
+        return value
 
-    column = sheet.max_column + 1
-
-
-    # Empty first cell
-
-    if (
-        sheet.max_row == 1
-        and sheet.cell(
-            row=1,
-            column=1
-        ).value is None
+    if isinstance(
+        value,
+        (int, float)
     ):
 
-        column = 1
+        return value
 
+    if isinstance(
+        value,
+        (list, dict)
+    ):
 
-    sheet.cell(
-        row=1,
-        column=column
-    ).value = key
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            separators=(",", ":")
+        )
 
-    headers[key] = column
-
-    return column
+    return value
 
 
 # ============================================================
-# ADD DATA TO EXCEL
+# REWRITE CSV WITH NEW COLUMNS
 # ============================================================
 
-def add_to_excel(data):
+def rewrite_csv_with_new_columns(data):
 
-    global excel_dirty
+    global csv_headers
+    global csv_writer
+    global csv_file
 
-    with excel_lock:
+    # --------------------------------------------------------
+    # Find new columns
+    # --------------------------------------------------------
+
+    new_keys = [
+        key
+        for key in data.keys()
+        if key not in csv_headers
+    ]
+
+    if not new_keys:
+
+        return False
+
+    # --------------------------------------------------------
+    # Add new columns
+    # --------------------------------------------------------
+
+    csv_headers.extend(
+        new_keys
+    )
+
+    print()
+    print(
+        "New CSV columns detected:"
+    )
+
+    print(
+        new_keys
+    )
+
+    # --------------------------------------------------------
+    # Read existing CSV
+    # --------------------------------------------------------
+
+    existing_rows = []
+
+    try:
+
+        csv_file.flush()
+
+        with open(
+            CSV_FILE,
+            "r",
+            newline="",
+            encoding="utf-8-sig"
+        ) as old_file:
+
+            reader = csv.DictReader(
+                old_file
+            )
+
+            for row in reader:
+
+                existing_rows.append(
+                    row
+                )
+
+    except Exception as e:
+
+        print(
+            "!!! CSV READ ERROR !!!"
+        )
+
+        print(
+            repr(e)
+        )
+
+    # --------------------------------------------------------
+    # Close current file
+    # --------------------------------------------------------
+
+    try:
+
+        csv_file.close()
+
+    except:
+
+        pass
+
+    # --------------------------------------------------------
+    # Rewrite entire CSV
+    # --------------------------------------------------------
+
+    try:
+
+        csv_file = open(
+            CSV_FILE,
+            "w",
+            newline="",
+            encoding="utf-8-sig"
+        )
+
+        csv_writer = csv.DictWriter(
+            csv_file,
+            fieldnames=csv_headers
+        )
+
+        csv_writer.writeheader()
+
+        # ----------------------------------------------------
+        # Restore previous rows
+        # ----------------------------------------------------
+
+        for row in existing_rows:
+
+            csv_writer.writerow(
+                row
+            )
+
+        csv_file.flush()
+
+        print(
+            "CSV structure updated successfully."
+        )
+
+        return True
+
+    except Exception as e:
+
+        print(
+            "!!! CSV REWRITE ERROR !!!"
+        )
+
+        print(
+            repr(e)
+        )
+
+        return False
+
+
+# ============================================================
+# ADD DATA TO CSV
+# ============================================================
+
+def add_to_csv(data):
+
+    global csv_headers
+    global csv_writer
+
+    with csv_lock:
 
         try:
 
             # ------------------------------------------------
-            # Create columns
+            # Create headers if necessary
             # ------------------------------------------------
 
-            for key in data.keys():
+            if not csv_headers:
 
-                get_column(key)
-
-
-            # ------------------------------------------------
-            # New row
-            # ------------------------------------------------
-
-            row = sheet.max_row + 1
-
-
-            # ------------------------------------------------
-            # Write values
-            # ------------------------------------------------
-
-            for key, value in data.items():
-
-                column = headers[key]
-
-                cell = sheet.cell(
-                    row=row,
-                    column=column
+                csv_headers = list(
+                    data.keys()
                 )
 
+                csv_writer = csv.DictWriter(
+                    csv_file,
+                    fieldnames=csv_headers
+                )
+
+                csv_writer.writeheader()
+
+                print()
+                print(
+                    "CSV headers created:"
+                )
+
+                print(
+                    csv_headers
+                )
+
+            else:
 
                 # --------------------------------------------
-                # Boolean
+                # Check for new fields
                 # --------------------------------------------
 
-                if isinstance(value, bool):
+                rewrite_csv_with_new_columns(
+                    data
+                )
 
-                    cell.value = value
+            # ------------------------------------------------
+            # Prepare row
+            # ------------------------------------------------
 
+            row = {}
 
-                # --------------------------------------------
-                # Number
-                # --------------------------------------------
+            for key in csv_headers:
 
-                elif isinstance(
-                    value,
-                    (int, float)
-                ):
+                if key in data:
 
-                    cell.value = value
-
-
-                # --------------------------------------------
-                # None
-                # --------------------------------------------
-
-                elif value is None:
-
-                    cell.value = None
-
-
-                # --------------------------------------------
-                # List / Dictionary
-                # --------------------------------------------
-
-                elif isinstance(
-                    value,
-                    (list, dict)
-                ):
-
-                    cell.value = json.dumps(
-                        value,
-                        ensure_ascii=False
+                    row[key] = convert_value_for_csv(
+                        data[key]
                     )
-
-
-                # --------------------------------------------
-                # String
-                # --------------------------------------------
 
                 else:
 
-                    cell.value = value
+                    row[key] = ""
 
+            # ------------------------------------------------
+            # Write row
+            # ------------------------------------------------
 
-            excel_dirty = True
+            csv_writer.writerow(
+                row
+            )
 
+            # ------------------------------------------------
+            # Immediate save
+            # ------------------------------------------------
+
+            if CSV_FLUSH_EVERY_ROW:
+
+                csv_file.flush()
 
         except Exception as e:
 
             print()
             print(
-                "!!! EXCEL DATA ERROR !!!"
+                "!!! CSV DATA ERROR !!!"
             )
 
             print(
@@ -273,68 +522,59 @@ def add_to_excel(data):
 
 
 # ============================================================
-# EXCEL AUTO SAVE
+# REMOVE UNWANTED FIELDS
 # ============================================================
 
-def excel_auto_save():
+def remove_unwanted_fields(data):
 
-    global excel_dirty
+    # --------------------------------------------------------
+    # Remove Start Question Panel Duration
+    # from top-level data
+    # --------------------------------------------------------
 
-    print(
-        f"Excel auto-save started: "
-        f"every {EXCEL_SAVE_INTERVAL} seconds"
+    data.pop(
+        "startQuestionPanelDuration",
+        None
     )
 
+    # --------------------------------------------------------
+    # Remove it from mazeVisits
+    # --------------------------------------------------------
 
-    while excel_running:
+    maze_visits = data.get(
+        "mazeVisits"
+    )
 
-        time.sleep(
-            EXCEL_SAVE_INTERVAL
-        )
+    if isinstance(
+        maze_visits,
+        list
+    ):
 
+        for visit in maze_visits:
 
-        with excel_lock:
+            if isinstance(
+                visit,
+                dict
+            ):
 
-            if excel_dirty:
+                visit.pop(
+                    "startQuestionPanelDuration",
+                    None
+                )
 
-                try:
-
-                    workbook.save(
-                        EXCEL_FILE
-                    )
-
-                    excel_dirty = False
-
-                    print()
-
-                    print(
-                        "[EXCEL] Saved successfully."
-                    )
-
-
-                except Exception as e:
-
-                    print()
-
-                    print(
-                        "!!! EXCEL SAVE ERROR !!!"
-                    )
-
-                    print(
-                        repr(e)
-                    )
+    return data
 
 
 # ============================================================
-# START EXCEL THREAD
+# ADD PARTICIPANT INFORMATION
 # ============================================================
 
-excel_thread = threading.Thread(
-    target=excel_auto_save,
-    daemon=True
-)
+def add_participant_information(data):
 
-excel_thread.start()
+    data["participantName"] = PARTICIPANT_NAME
+    data["participantID"] = PARTICIPANT_ID
+
+    return data
 
 
 # ============================================================
@@ -348,21 +588,17 @@ def receive_exact(
 
     data = b""
 
-
     while len(data) < size:
 
         chunk = conn.recv(
             size - len(data)
         )
 
-
         if not chunk:
 
             return None
 
-
         data += chunk
-
 
     return data
 
@@ -382,25 +618,18 @@ def receive_message(conn):
         4
     )
 
-
     if length_bytes is None:
 
         return None
 
-
     # --------------------------------------------------------
     # Big Endian unsigned integer
-    # Compatible with Unity:
-    #
-    # IPAddress.HostToNetworkOrder(...)
-    #
     # --------------------------------------------------------
 
     message_length = struct.unpack(
         "!I",
         length_bytes
     )[0]
-
 
     if message_length <= 0:
 
@@ -411,7 +640,6 @@ def receive_message(conn):
 
         return None
 
-
     if message_length > 10 * 1024 * 1024:
 
         print(
@@ -420,7 +648,6 @@ def receive_message(conn):
         )
 
         return None
-
 
     # --------------------------------------------------------
     # Receive JSON bytes
@@ -431,11 +658,9 @@ def receive_message(conn):
         message_length
     )
 
-
     if json_bytes is None:
 
         return None
-
 
     try:
 
@@ -443,14 +668,11 @@ def receive_message(conn):
             "utf-8"
         )
 
-
         data = json.loads(
             json_string
         )
 
-
         return data
-
 
     except Exception as e:
 
@@ -482,7 +704,9 @@ def save_continuous_json(data):
             )
         )
 
-        file.write("\n")
+        file.write(
+            "\n"
+        )
 
 
 # ============================================================
@@ -494,6 +718,22 @@ def save_experiment_summary(data):
     try:
 
         # ----------------------------------------------------
+        # Remove unwanted field completely
+        # ----------------------------------------------------
+
+        remove_unwanted_fields(
+            data
+        )
+
+        # ----------------------------------------------------
+        # Add participant information
+        # ----------------------------------------------------
+
+        add_participant_information(
+            data
+        )
+
+        # ----------------------------------------------------
         # Add server time
         # ----------------------------------------------------
 
@@ -501,9 +741,8 @@ def save_experiment_summary(data):
             datetime.now().isoformat()
         )
 
-
         # ----------------------------------------------------
-        # Save as formatted JSON
+        # Save formatted JSON
         # ----------------------------------------------------
 
         with open(
@@ -519,7 +758,6 @@ def save_experiment_summary(data):
                 indent=4
             )
 
-
         # ----------------------------------------------------
         # Console information
         # ----------------------------------------------------
@@ -528,7 +766,6 @@ def save_experiment_summary(data):
             "mazeVisits",
             []
         )
-
 
         print()
         print(
@@ -541,6 +778,16 @@ def save_experiment_summary(data):
 
         print(
             "=========================================="
+        )
+
+        print(
+            "Participant Name:",
+            PARTICIPANT_NAME
+        )
+
+        print(
+            "Participant ID:",
+            PARTICIPANT_ID
         )
 
         print(
@@ -569,11 +816,6 @@ def save_experiment_summary(data):
         )
 
         print(
-            "Start Question Panel Duration:",
-            data.get("startQuestionPanelDuration")
-        )
-
-        print(
             "Maze Visits:",
             len(maze_visits)
         )
@@ -586,7 +828,6 @@ def save_experiment_summary(data):
         print(
             "=========================================="
         )
-
 
         # ----------------------------------------------------
         # Print each maze visit
@@ -642,11 +883,9 @@ def save_experiment_summary(data):
                 )
             )
 
-
         print(
             "=========================================="
         )
-
 
     except Exception as e:
 
@@ -667,13 +906,28 @@ def save_experiment_summary(data):
 def handle_continuous_data(data):
 
     # --------------------------------------------------------
+    # Remove unwanted field completely
+    # --------------------------------------------------------
+
+    remove_unwanted_fields(
+        data
+    )
+
+    # --------------------------------------------------------
+    # Add participant information
+    # --------------------------------------------------------
+
+    add_participant_information(
+        data
+    )
+
+    # --------------------------------------------------------
     # Add server reception time
     # --------------------------------------------------------
 
     data["serverReceivedTime"] = (
         datetime.now().isoformat()
     )
-
 
     # --------------------------------------------------------
     # Save JSONL
@@ -683,12 +937,11 @@ def handle_continuous_data(data):
         data
     )
 
-
     # --------------------------------------------------------
-    # Save Excel
+    # Save CSV immediately
     # --------------------------------------------------------
 
-    add_to_excel(
+    add_to_csv(
         data
     )
 
@@ -718,12 +971,17 @@ def handle_client(
     )
 
     print(
+        "Participant:",
+        PARTICIPANT_NAME,
+        "| ID:",
+        PARTICIPANT_ID
+    )
+
+    print(
         "=========================================="
     )
 
-
     message_count = 0
-
 
     try:
 
@@ -733,7 +991,6 @@ def handle_client(
                 conn
             )
 
-
             if data is None:
 
                 print(
@@ -742,9 +999,7 @@ def handle_client(
 
                 break
 
-
             message_count += 1
-
 
             # =================================================
             # IDENTIFY MESSAGE TYPE
@@ -755,12 +1010,10 @@ def handle_client(
                 ""
             )
 
-
             message_type = data.get(
                 "messageType",
                 ""
             )
-
 
             # =================================================
             # EXPERIMENT SUMMARY
@@ -780,7 +1033,6 @@ def handle_client(
 
                 continue
 
-
             # =================================================
             # CONTINUOUS DATA / EVENT
             # =================================================
@@ -788,7 +1040,6 @@ def handle_client(
             handle_continuous_data(
                 data
             )
-
 
             # =================================================
             # CONSOLE
@@ -801,13 +1052,11 @@ def handle_client(
                 f"Attempt={data.get('attemptNumber')}"
             )
 
-
     except ConnectionResetError:
 
         print(
             "Connection reset by Unity."
         )
-
 
     except Exception as e:
 
@@ -819,36 +1068,31 @@ def handle_client(
             repr(e)
         )
 
-
     finally:
 
         # ----------------------------------------------------
-        # FINAL EXCEL SAVE
+        # Final CSV flush
         # ----------------------------------------------------
 
-        with excel_lock:
+        with csv_lock:
 
             try:
 
-                workbook.save(
-                    EXCEL_FILE
-                )
+                csv_file.flush()
 
                 print(
-                    "Excel final save completed."
+                    "CSV final flush completed."
                 )
-
 
             except Exception as e:
 
                 print(
-                    "!!! FINAL EXCEL SAVE ERROR !!!"
+                    "!!! FINAL CSV FLUSH ERROR !!!"
                 )
 
                 print(
                     repr(e)
                 )
-
 
         try:
 
@@ -857,7 +1101,6 @@ def handle_client(
         except:
 
             pass
-
 
         print(
             "Connection closed:",
@@ -871,11 +1114,7 @@ def handle_client(
 
 def start_server():
 
-    global excel_running
-
-
     print()
-
     print(
         "=========================================="
     )
@@ -895,13 +1134,32 @@ def start_server():
     print()
 
     print(
+        "Participant Name:",
+        PARTICIPANT_NAME
+    )
+
+    print(
+        "Participant ID:",
+        PARTICIPANT_ID
+    )
+
+    print()
+
+    print(
+        "Participant Folder:",
+        PARTICIPANT_FOLDER
+    )
+
+    print()
+
+    print(
         "CONTINUOUS JSON:",
         DATA_FILE
     )
 
     print(
-        "CONTINUOUS EXCEL:",
-        EXCEL_FILE
+        "CONTINUOUS CSV:",
+        CSV_FILE
     )
 
     print()
@@ -911,18 +1169,9 @@ def start_server():
         SUMMARY_FILE
     )
 
-    print()
-
-    print(
-        "Excel save interval:",
-        EXCEL_SAVE_INTERVAL,
-        "seconds"
-    )
-
     print(
         "=========================================="
     )
-
 
     # ========================================================
     # CREATE SERVER
@@ -933,13 +1182,11 @@ def start_server():
         socket.SOCK_STREAM
     )
 
-
     server.setsockopt(
         socket.SOL_SOCKET,
         socket.SO_REUSEADDR,
         1
     )
-
 
     server.bind(
         (
@@ -948,16 +1195,13 @@ def start_server():
         )
     )
 
-
     server.listen(
         1
     )
 
-
     print(
         "Waiting for Unity..."
     )
-
 
     try:
 
@@ -965,12 +1209,10 @@ def start_server():
 
             conn, address = server.accept()
 
-
             handle_client(
                 conn,
                 address
             )
-
 
             print()
 
@@ -978,56 +1220,45 @@ def start_server():
                 "Waiting for Unity again..."
             )
 
-
     except KeyboardInterrupt:
 
         print(
             "\nServer stopped."
         )
 
-
     finally:
 
         print(
-            "Final Excel save..."
+            "Final CSV flush..."
         )
 
-
-        excel_running = False
-
-
-        with excel_lock:
+        with csv_lock:
 
             try:
 
-                workbook.save(
-                    EXCEL_FILE
-                )
+                csv_file.flush()
 
                 print(
-                    "Final Excel save completed."
+                    "Final CSV save completed."
                 )
-
 
             except Exception as e:
 
                 print(
-                    "!!! FINAL SAVE ERROR !!!"
+                    "!!! FINAL CSV SAVE ERROR !!!"
                 )
 
                 print(
                     repr(e)
                 )
 
-
             try:
 
-                workbook.close()
+                csv_file.close()
 
             except:
 
                 pass
-
 
         try:
 

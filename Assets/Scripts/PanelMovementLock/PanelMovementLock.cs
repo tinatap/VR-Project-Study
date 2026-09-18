@@ -14,6 +14,29 @@ public class PanelMovementLock : MonoBehaviour
     public GameObject exitConfirmPanel;
     public GameObject startQuestionPanel;
 
+    private bool lastMovementLocked;
+
+
+    // =====================================================
+    // START
+    // =====================================================
+
+    private void Start()
+    {
+        if (vrController == null)
+        {
+            vrController =
+                FindFirstObjectByType<VRThirdPersonController>();
+        }
+
+        UpdateMovementLock(true);
+    }
+
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
+
     private void Update()
     {
         bool anyPanelOpen =
@@ -24,14 +47,45 @@ public class PanelMovementLock : MonoBehaviour
             IsOpen(exitConfirmPanel) ||
             IsOpen(startQuestionPanel);
 
+        UpdateMovementLock(anyPanelOpen);
+    }
+
+
+    // =====================================================
+    // UPDATE MOVEMENT LOCK
+    // =====================================================
+
+    private void UpdateMovementLock(bool locked)
+    {
+        // اگر وضعیت تغییری نکرده، نیازی به فراخوانی مجدد نیست
+        if (!locked &&
+            !lastMovementLocked)
+        {
+            return;
+        }
+
+        if (locked &&
+            lastMovementLocked)
+        {
+            return;
+        }
+
+        lastMovementLocked = locked;
+
         if (vrController != null)
         {
-            vrController.SetMovementLocked(anyPanelOpen);
+            vrController.SetMovementLocked(locked);
         }
     }
 
+
+    // =====================================================
+    // PANEL CHECK
+    // =====================================================
+
     private bool IsOpen(GameObject panel)
     {
-        return panel != null && panel.activeInHierarchy;
+        return panel != null &&
+               panel.activeInHierarchy;
     }
 }
