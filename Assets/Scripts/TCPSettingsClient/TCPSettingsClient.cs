@@ -695,28 +695,28 @@ public class TCPSettingsClient : MonoBehaviour
         switch (avatarNumber)
         {
             case 1:
-                return "OverWeightedWoman";
+                return "OverWeightedOldMan";
 
             case 2:
-                return "UnderWeightedWoman";
+                return "OverWeightedOldWoman";
 
             case 3:
-                return "OverWeightedMan";
+                return "OverWeightedYoungMan";
 
             case 4:
-                return "UnderWeightedMan";
+                return "OverWeightedYoungWoman";
 
             case 5:
-                return "OldWoman";
+                return "FitOldMan";
 
             case 6:
-                return "YoungWoman";
+                return "FitOldWoman";
 
             case 7:
-                return "OldMan";
+                return "FitYoungMan";
 
             case 8:
-                return "YoungMan";
+                return "FitYoungWoman";
 
             default:
                 return null;
