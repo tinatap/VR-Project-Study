@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: e8b153433b88178489d201346fcaa373
+guid: 269b0990783be9a448e9e2df4b6f1144
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -8,42 +8,42 @@ ModelImporter:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: brown_eye
-    second: {fileID: 2800000, guid: 7b43fd3965bac7b4dbd4161390a2cf51, type: 3}
+    second: {fileID: 2800000, guid: 5ea4845ee9dda1643aa35bc17b89025d, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: crude_male_tex
-    second: {fileID: 2800000, guid: bf5d9cd69b1bbd1479032a5b0fb137b2, type: 3}
+    second: {fileID: 2800000, guid: 10c6211253c23ae4786c45dc9e24d683, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: eyebrow010
-    second: {fileID: 2800000, guid: f2a1f5083bdf7934bb3505ae9f4f5f85, type: 3}
+    second: {fileID: 2800000, guid: fb193feb0d99b334499d3eddb72f7148, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: eyelashes01
-    second: {fileID: 2800000, guid: 189f018ca2178a74793e274548f9ffb6, type: 3}
+    second: {fileID: 2800000, guid: 9e8901da346185949bcf45a1f4e75d82, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: panttex1
-    second: {fileID: 2800000, guid: 51f2daebb845fc745966ea3f00a3adda, type: 3}
+    second: {fileID: 2800000, guid: 7b65ce23c71149044b151f8ae07f6b78, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: ponytail01_diffuse
-    second: {fileID: 2800000, guid: 8715e46966822fa4a889b6b35dc94921, type: 3}
+    second: {fileID: 2800000, guid: f587af8f614fbf649a1dd588c7f6dab2, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: shoes03_diffuse
-    second: {fileID: 2800000, guid: 069b5977eae258e40a41671c63e94e8d, type: 3}
+    second: {fileID: 2800000, guid: 44d23cb53fb52b246a20e0b9ce43647e, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: young_lightskinned_female_diffuse3
-    second: {fileID: 2800000, guid: e6404af2a1e1fdd4f9f97418117a3062, type: 3}
+    second: {fileID: 2800000, guid: 8673fda44b200574a9b13d6df3d9b2a5, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -1471,14 +1471,14 @@ ModelImporter:
       scale: {x: 1, y: 1, z: 1}
     - name: Human.elvs_crude_t-shirt_male
       parentName: UnderWeightedWoman(Clone)
-      position: {x: -1.2085483, y: 0, z: 0}
+      position: {x: -1.2085483, y: 0, z: -0.0049146283}
       rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 100, y: 100, z: 100}
+      scale: {x: 98.898705, y: 108.03017, z: 100}
     - name: Human.elvs_disco_pants_skinny
       parentName: UnderWeightedWoman(Clone)
-      position: {x: -1.2085483, y: 0, z: -0.0056160144}
+      position: {x: -1.2085483, y: 0, z: 0}
       rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 106.85832, y: 114.75919, z: 100}
+      scale: {x: 96.12404, y: 84.60572, z: 100}
     - name: Human.eyebrow010.001
       parentName: UnderWeightedWoman(Clone)
       position: {x: -1.2085483, y: 0, z: 0}
@@ -1498,7 +1498,7 @@ ModelImporter:
       parentName: UnderWeightedWoman(Clone)
       position: {x: -1.2085483, y: 0, z: 0}
       rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-      scale: {x: 100, y: 100, z: 100}
+      scale: {x: 99.67544, y: 102.65838, z: 99.67544}
     - name: Human.shoes03
       parentName: UnderWeightedWoman(Clone)
       position: {x: -1.2085483, y: 0, z: 0}
