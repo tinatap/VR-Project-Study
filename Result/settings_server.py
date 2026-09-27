@@ -75,14 +75,14 @@ def choose_settings():
 
     print()
     print("Avatar:")
-    print("1 - OverWeightedWoman")
-    print("2 - UnderWeightedWoman")
-    print("3 - OverWeightedMan")
-    print("4 - UnderWeightedMan")
-    print("5 - OldWoman")
-    print("6 - YoungWoman")
-    print("7 - OldMan")
-    print("8 - YoungMan")
+    print("1 - OverWeightedOldMan")
+    print("2 - OverWeightedOldWoman")
+    print("3 - OverWeightedYoungMan")
+    print("4 - OverWeightedYoungWoman")
+    print("5 - FitOldMan")
+    print("6 - FitOldWoman")
+    print("7 - FitYoungMan")
+    print("8 - FitYoungWoman")
 
     while True:
         try:
@@ -133,14 +133,14 @@ def choose_settings():
     }
 
     avatar_names = {
-        1: "OverWeightedWoman",
-        2: "UnderWeightedWoman",
-        3: "OverWeightedMan",
-        4: "UnderWeightedMan",
-        5: "OldWoman",
-        6: "YoungWoman",
-        7: "OldMan",
-        8: "YoungMan"
+        1: "OverWeightedOldMan",
+        2: "OverWeightedOldWoman",
+        3: "OverWeightedYoungMan",
+        4: "OverWeightedYoungWoman",
+        5: "FitOldMan",
+        6: "FitOldWoman",
+        7: "FitYoungMan",
+        8: "FitYoungWoman"
     }
 
 
