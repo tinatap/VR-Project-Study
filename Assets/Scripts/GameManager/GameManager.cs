@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections;
 using System.Reflection;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -281,6 +282,54 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
+    // PERIODIC PAUSE
+    // =====================================================
+
+    [Header("Periodic Pause")]
+
+    [Tooltip("Time between automatic pause requests, measured from game start / YES pressed.")]
+    public float pauseInterval = 600f;
+
+    [Tooltip("Main panel shown when the periodic pause is triggered.")]
+    public GameObject pausePanel;
+
+    [Tooltip("Panel shown after Left Trigger while Pause Panel is open.")]
+    public GameObject pauseContinueConfirmPanel;
+
+    [Tooltip("Text shown on the Pause Panel.")]
+    public TextMeshProUGUI pauseMessageText;
+
+    [Tooltip("Text shown on the Continue Confirmation Panel.")]
+    public TextMeshProUGUI pauseContinueMessageText;
+
+
+    // =====================================================
+    // PAUSE CONTINUE BUTTONS
+    // =====================================================
+
+    [Header("Pause Continue Buttons")]
+
+    [Tooltip("YES button in Pause Continue Confirmation Panel.")]
+    public Button pauseYesButton;
+
+    [Tooltip("NO button in Pause Continue Confirmation Panel.")]
+    public Button pauseNoButton;
+
+
+    // =====================================================
+    // PAUSE CONTINUE SELECTION COLORS
+    // =====================================================
+
+    [Header("Pause Continue Selection Colors")]
+
+    [Tooltip("Color of the currently selected option.")]
+    public Color pauseSelectedColor = Color.green;
+
+    [Tooltip("Color of the non-selected option.")]
+    public Color pauseNormalColor = Color.white;
+
+
+    // =====================================================
     // MAZE SETTINGS
     // =====================================================
 
@@ -334,7 +383,6 @@ public class GameManager : MonoBehaviour
     public float maze10Time = 80f;
     public int maze10Score = 100;
 
-
     // =====================================================
     // MAZE TIME ATTEMPT MULTIPLIERS
     // =====================================================
@@ -356,13 +404,52 @@ public class GameManager : MonoBehaviour
     [Tooltip("Time multiplier for 5th attempt.")]
     public float attempt5TimeMultiplier = 0.4f;
 
-    [Tooltip("Time multiplier for 6th attempt and beyond.")]
-    public float attempt6PlusTimeMultiplier = 0.3f;
+    [Tooltip("Time multiplier for 6th attempt.")]
+    public float attempt6TimeMultiplier = 0.35f;
+
+    [Tooltip("Time multiplier for 7th attempt.")]
+    public float attempt7TimeMultiplier = 0.30f;
+
+    [Tooltip("Time multiplier for 8th attempt.")]
+    public float attempt8TimeMultiplier = 0.25f;
+
+    [Tooltip("Time multiplier for 9th attempt.")]
+    public float attempt9TimeMultiplier = 0.20f;
+
+    [Tooltip("Time multiplier for 10th attempt.")]
+    public float attempt10TimeMultiplier = 0.15f;
+
+    [Tooltip("Time multiplier for 11th attempt and beyond.")]
+    public float attempt11PlusTimeMultiplier = 0.10f;
+
+
+    // =====================================================
+    // PERIODIC PAUSE PUBLIC STATE
+    // =====================================================
+
+    public bool IsPausePanelOpen
+    {
+        get
+        {
+            return pausePanelCurrentlyOpen;
+        }
+    }
+
+    public bool IsPauseContinueConfirmOpen
+    {
+        get
+        {
+            return pauseContinueConfirmCurrentlyOpen;
+        }
+    }
 
 
     // =====================================================
     // PRIVATE VARIABLES
     // =====================================================
+
+    private Image pauseYesImage;
+    private Image pauseNoImage;
 
     private CharacterController characterController;
 
@@ -370,6 +457,8 @@ public class GameManager : MonoBehaviour
     private Coroutine restartCoroutine;
     private Coroutine successCoroutine;
     private Coroutine totalGameTimerCoroutine;
+
+    private Coroutine movementRecoveryCoroutine;
 
     private int currentMaze = 0;
 
@@ -390,6 +479,36 @@ public class GameManager : MonoBehaviour
 
     private bool exitRequestedThisFrame = false;
     private bool exitFinishedGame = false;
+
+
+    // =====================================================
+    // PERIODIC PAUSE INTERNAL STATE
+    // =====================================================
+
+    private bool pausePanelCurrentlyOpen = false;
+    private bool pauseContinueConfirmCurrentlyOpen = false;
+
+    private bool pauseRequested = false;
+    private bool periodicPauseSystemActive = false;
+
+    private bool pauseSelectionYes = true;
+
+    private float pauseStartTime = 0f;
+    private float pauseContinueConfirmOpenTime = 0f;
+
+    // =====================================================
+    // Exact beginning of the CURRENT pause interval.
+    //
+    // This changes ONLY:
+    //
+    // 1. When the game starts.
+    // 2. When participant presses YES after a pause.
+    //
+    // It does NOT change when a pause becomes pending.
+    // It does NOT change when the pause panel opens.
+    // =====================================================
+
+    private float pauseIntervalStartTime = 0f;
 
 
     // =====================================================
@@ -473,12 +592,20 @@ public class GameManager : MonoBehaviour
         {
             characterController =
                 player.GetComponent<CharacterController>();
+
+            if (characterController == null)
+            {
+                characterController =
+                    player.GetComponentInChildren<CharacterController>();
+            }
         }
 
         if (tcp == null)
         {
             tcp = FindFirstObjectByType<TCP>();
         }
+
+        Time.timeScale = 1f;
     }
 
 
@@ -488,6 +615,8 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        Time.timeScale = 1f;
+
         currentMaze = 0;
 
         mazeVisitHistory.Clear();
@@ -502,22 +631,117 @@ public class GameManager : MonoBehaviour
         exitConfirmPanelOpenTime = 0f;
         exitConfirmPanelCurrentlyOpen = false;
 
+        // =================================================
+        // RESET PERIODIC PAUSE STATE
+        // =================================================
+
+        pauseIntervalStartTime = 0f;
+        pauseRequested = false;
+        periodicPauseSystemActive = false;
+
+        pausePanelCurrentlyOpen = false;
+        pauseContinueConfirmCurrentlyOpen = false;
+
+        if (pauseYesButton != null)
+        {
+            pauseYesImage =
+                pauseYesButton.GetComponent<Image>();
+        }
+
+        if (pauseNoButton != null)
+        {
+            pauseNoImage =
+                pauseNoButton.GetComponent<Image>();
+        }
+
+        pauseSelectionYes = true;
+        UpdatePauseContinueButtonSelection();
+
         SetPanelActive(successPanel01, false);
         SetPanelActive(timeOverPanel, false);
         SetPanelActive(finalGamePanel, false);
         SetPanelActive(finalSuccessPanel, false);
         SetPanelActive(exitConfirmPanel, false);
         SetPanelActive(startQuestionPanel, false);
+        SetPanelActive(pausePanel, false);
+        SetPanelActive(pauseContinueConfirmPanel, false);
 
         SetAllMazesInactive();
 
         SetupCoinMode();
         SetMazeUI(false);
 
+        ForceUnlockPlayerMovement();
+
         Debug.Log(
             "========== GAME INITIALIZED ==========\n" +
             "Start Room Timer Started."
         );
+    }
+
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
+    //
+    // PERIODIC PAUSE IS CHECKED HERE.
+    //
+    // IMPORTANT:
+    //
+    // Update() continues to execute when Time.timeScale = 0.
+    // However, Time.time does NOT advance while the game is
+    // paused.
+    //
+    // Therefore:
+    //
+    // - The pause duration is automatically excluded.
+    // - The next interval begins exactly when YES is pressed.
+    //
+    // =====================================================
+
+    private void Update()
+    {
+        if (!periodicPauseSystemActive)
+            return;
+
+        if (gameFinished)
+            return;
+
+        if (pausePanelCurrentlyOpen)
+            return;
+
+        if (pauseRequested)
+            return;
+
+        float elapsed =
+            Time.time - pauseIntervalStartTime;
+
+        if (elapsed >= pauseInterval)
+        {
+            pauseRequested = true;
+
+            Debug.Log(
+                "========== PERIODIC PAUSE REQUEST CREATED ==========\n" +
+                "Interval: " +
+                pauseInterval.ToString("F2") +
+                " seconds\n" +
+                "Elapsed: " +
+                elapsed.ToString("F3") +
+                " seconds\n" +
+                "Current Maze: " +
+                currentMaze +
+                "\nAttempt: " +
+                GetCurrentAttemptNumber() +
+                "\nStage Completed: " +
+                stageCompleted +
+                "\nWaiting For Restart: " +
+                waitingForRestart +
+                "\nChanging Maze: " +
+                changingMaze
+            );
+
+            TryOpenPeriodicPause();
+        }
     }
 
 
@@ -666,6 +890,10 @@ public class GameManager : MonoBehaviour
         if (gameFinished)
             return;
 
+        Time.timeScale = 1f;
+
+        ForceUnlockPlayerMovement();
+
         gameStartTime = Time.time;
 
         ClosePanel(
@@ -713,6 +941,12 @@ public class GameManager : MonoBehaviour
 
         StartMaze(1);
 
+        // =================================================
+        // START NEW PERIODIC PAUSE INTERVAL
+        // =================================================
+
+        StartPeriodicPauseSystem();
+
         SetMazeUI(true);
 
         if (totalGameTimerCoroutine != null)
@@ -721,10 +955,546 @@ public class GameManager : MonoBehaviour
         totalGameTimerCoroutine =
             StartCoroutine(TotalGameTimer());
 
-        Debug.Log("Game started from Maze 1.");
+        Debug.Log(
+            "========== GAME STARTED FROM MAZE 1 ==========\n" +
+            "Current Maze: " + currentMaze +
+            "\nPause Interval: " +
+            pauseInterval.ToString("F2") +
+            " seconds"
+        );
     }
 
 
+    // =====================================================
+    // START PERIODIC PAUSE SYSTEM
+    // =====================================================
+
+    private void StartPeriodicPauseSystem()
+    {
+        // No Coroutine is used here.
+        //
+        // Update() continuously checks the elapsed time.
+
+        periodicPauseSystemActive = true;
+        pauseRequested = false;
+
+        // =================================================
+        // FIRST INTERVAL STARTS EXACTLY NOW
+        // =================================================
+
+        pauseIntervalStartTime = Time.time;
+
+        Debug.Log(
+            "========== PERIODIC PAUSE SYSTEM STARTED ==========\n" +
+            "Interval: " +
+            pauseInterval.ToString("F2") +
+            " seconds\n" +
+            "Interval Start Time: " +
+            pauseIntervalStartTime.ToString("F3") +
+            "\nCurrent Maze: " +
+            currentMaze
+        );
+    }
+
+
+    // =====================================================
+    // STOP PERIODIC PAUSE SYSTEM
+    // =====================================================
+
+    private void StopPeriodicPauseSystem()
+    {
+        periodicPauseSystemActive = false;
+        pauseRequested = false;
+
+        Debug.Log(
+            "========== PERIODIC PAUSE SYSTEM STOPPED =========="
+        );
+    }
+
+
+    // =====================================================
+    // TRY OPEN PERIODIC PAUSE
+    // =====================================================
+
+    private void TryOpenPeriodicPause()
+    {
+        if (!periodicPauseSystemActive)
+            return;
+
+        if (!pauseRequested)
+            return;
+
+        if (gameFinished)
+            return;
+
+        if (pausePanelCurrentlyOpen)
+            return;
+
+        // =================================================
+        // STILL INSIDE ACTIVE MAZE
+        // =================================================
+
+        if (!stageCompleted &&
+            !waitingForRestart &&
+            !changingMaze)
+        {
+            Debug.Log(
+                "========== PERIODIC PAUSE PENDING ==========\n" +
+                "The pause interval has elapsed.\n" +
+                "Current maze attempt will be allowed to finish.\n" +
+                "Current Maze: " +
+                currentMaze +
+                "\nAttempt: " +
+                GetCurrentAttemptNumber()
+            );
+
+            return;
+        }
+
+        // =================================================
+        // SAFE POINT REACHED
+        // =================================================
+
+        Debug.Log(
+            "========== PERIODIC PAUSE SAFE POINT REACHED ==========\n" +
+            "Current Maze: " +
+            currentMaze +
+            "\nStage Completed: " +
+            stageCompleted +
+            "\nWaiting For Restart: " +
+            waitingForRestart +
+            "\nChanging Maze: " +
+            changingMaze
+        );
+
+        OpenPeriodicPause();
+    }
+
+
+    // =====================================================
+    // OPEN PERIODIC PAUSE
+    // =====================================================
+
+    private void OpenPeriodicPause()
+    {
+        if (!pauseRequested)
+            return;
+
+        if (gameFinished)
+            return;
+
+        if (pausePanelCurrentlyOpen)
+            return;
+
+        pauseRequested = false;
+
+        pausePanelCurrentlyOpen = true;
+
+        pauseStartTime = Time.unscaledTime;
+
+        pauseSelectionYes = true;
+
+        if (pauseMessageText != null)
+        {
+            pauseMessageText.text = "PAUSE";
+        }
+
+        SetPanelActive(
+            pauseContinueConfirmPanel,
+            false
+        );
+
+        pauseContinueConfirmCurrentlyOpen = false;
+
+        // =====================================================
+        // OPEN MAIN PAUSE PANEL
+        // =====================================================
+
+        OpenPanel(
+            pausePanel,
+            "PANEL_OPENED_PERIODIC_PAUSE"
+        );
+
+        // =====================================================
+        // EXPLICIT TCP EVENT
+        // =====================================================
+
+        SendTCPEvent(
+            "PERIODIC_PAUSE_STARTED",
+            "PAUSE_EVENT",
+            "Pause panel opened."
+        );
+
+        Time.timeScale = 0f;
+
+        Debug.Log(
+            "========== PERIODIC PAUSE PANEL OPENED ==========\n" +
+            "Pause Start Time: " +
+            pauseStartTime.ToString("F3") +
+            "\nMaze: " +
+            currentMaze +
+            "\nAttempt: " +
+            GetCurrentAttemptNumber() +
+            "\nInterval Start Time: " +
+            pauseIntervalStartTime.ToString("F3") +
+            "\nGame is now paused."
+        );
+    }
+
+    // =====================================================
+    // PAUSE LEFT TRIGGER
+    // =====================================================
+
+    public void HandlePauseLeftTrigger()
+    {
+        if (!pausePanelCurrentlyOpen)
+            return;
+
+        if (pauseContinueConfirmCurrentlyOpen)
+            return;
+
+        pauseContinueConfirmCurrentlyOpen = true;
+
+        pauseSelectionYes = true;
+
+        pauseContinueConfirmOpenTime =
+            Time.unscaledTime;
+
+        if (pauseContinueMessageText != null)
+        {
+            pauseContinueMessageText.text =
+                "Do you want to continue?";
+        }
+
+        UpdatePauseContinueButtonSelection();
+
+        OpenPanel(
+            pauseContinueConfirmPanel,
+            "PANEL_OPENED_PAUSE_CONTINUE_CONFIRM"
+        );
+
+        // =====================================================
+        // TCP EVENT
+        // =====================================================
+
+        SendTCPEvent(
+            "PAUSE_CONTINUE_CONFIRM_OPENED",
+            "PAUSE_EVENT",
+            "Continue confirmation panel opened; default selection = YES."
+        );
+
+        Debug.Log(
+            "Pause Continue Confirmation Panel opened."
+        );
+    }
+
+    // =====================================================
+    // PAUSE CONTINUE THUMBSTICK
+    // =====================================================
+
+    public void UpdatePauseContinueSelectionFromThumbstick(
+    Vector2 leftThumbstick
+)
+    {
+        if (!pauseContinueConfirmCurrentlyOpen)
+            return;
+
+        if (leftThumbstick.x < -0.5f)
+        {
+            if (!pauseSelectionYes)
+            {
+                pauseSelectionYes = true;
+
+                UpdatePauseContinueButtonSelection();
+
+                SendTCPEvent(
+                    "PAUSE_CONTINUE_OPTION_SELECTED",
+                    "PAUSE_SELECTION",
+                    "SelectedOption=YES"
+                );
+
+                Debug.Log(
+                    "PAUSE CONTINUE: YES selected"
+                );
+            }
+        }
+        else if (leftThumbstick.x > 0.5f)
+        {
+            if (pauseSelectionYes)
+            {
+                pauseSelectionYes = false;
+
+                UpdatePauseContinueButtonSelection();
+
+                SendTCPEvent(
+                    "PAUSE_CONTINUE_OPTION_SELECTED",
+                    "PAUSE_SELECTION",
+                    "SelectedOption=NO"
+                );
+
+                Debug.Log(
+                    "PAUSE CONTINUE: NO selected"
+                );
+            }
+        }
+    }
+    // =====================================================
+    // UPDATE PAUSE BUTTON SELECTION
+    // =====================================================
+
+    private void UpdatePauseContinueButtonSelection()
+    {
+        if (pauseYesImage != null)
+        {
+            pauseYesImage.color =
+                pauseSelectionYes
+                ? pauseSelectedColor
+                : pauseNormalColor;
+        }
+
+        if (pauseNoImage != null)
+        {
+            pauseNoImage.color =
+                pauseSelectionYes
+                ? pauseNormalColor
+                : pauseSelectedColor;
+        }
+    }
+
+
+    // =====================================================
+    // CONFIRM PAUSE CONTINUE SELECTION
+    // =====================================================
+
+    public void ConfirmPauseContinueSelection()
+    {
+        if (!pauseContinueConfirmCurrentlyOpen)
+            return;
+
+        if (pauseSelectionYes)
+        {
+            ConfirmPauseContinueYes();
+        }
+        else
+        {
+            ConfirmPauseContinueNo();
+        }
+    }
+
+
+    // =====================================================
+    // PAUSE CONTINUE YES
+    // =====================================================
+
+    private void ConfirmPauseContinueYes()
+    {
+        if (!pausePanelCurrentlyOpen)
+            return;
+
+        float pauseDuration =
+            Mathf.Max(
+                0f,
+                Time.unscaledTime - pauseStartTime
+            );
+
+        // =====================================================
+        // TCP: FINAL DECISION = YES
+        // =====================================================
+
+        SendTCPEvent(
+            "PAUSE_CONTINUE_CONFIRMED",
+            "PAUSE_DECISION",
+            "SelectedOption=YES" +
+            "; PauseDuration=" +
+            pauseDuration.ToString("F3")
+        );
+
+        // =====================================================
+        // CLOSE CONFIRMATION PANEL
+        // =====================================================
+
+        pauseContinueConfirmCurrentlyOpen = false;
+        pauseContinueConfirmOpenTime = 0f;
+
+        ClosePanel(
+            pauseContinueConfirmPanel,
+            "PANEL_CLOSED_PAUSE_CONTINUE_CONFIRM"
+        );
+
+        // =====================================================
+        // TCP: CONFIRM PANEL CLOSED
+        // =====================================================
+
+        SendTCPEvent(
+            "PAUSE_CONTINUE_CONFIRM_CLOSED",
+            "PAUSE_EVENT",
+            "Reason=YES_CONFIRMED"
+        );
+
+        // =====================================================
+        // CLOSE MAIN PAUSE PANEL
+        // =====================================================
+
+        pausePanelCurrentlyOpen = false;
+
+        ClosePanel(
+            pausePanel,
+            "PANEL_CLOSED_PERIODIC_PAUSE"
+        );
+
+        // =====================================================
+        // TCP: MAIN PAUSE CLOSED
+        // =====================================================
+
+        SendTCPEvent(
+            "PERIODIC_PAUSE_ENDED",
+            "PAUSE_EVENT",
+            "PauseDuration=" +
+            pauseDuration.ToString("F3") +
+            "; Continue=YES"
+        );
+
+        // =====================================================
+        // RESUME GAME
+        // =====================================================
+
+        Time.timeScale = 1f;
+
+        pauseRequested = false;
+
+        // =====================================================
+        // NEW INTERVAL STARTS EXACTLY FROM YES
+        // =====================================================
+
+        pauseIntervalStartTime = Time.time;
+
+        periodicPauseSystemActive = true;
+
+        Debug.Log(
+            "========== NEW PERIODIC PAUSE INTERVAL STARTED ==========\n" +
+            "YES pressed at Time.time: " +
+            pauseIntervalStartTime.ToString("F3") +
+            "\nNext Pause after: " +
+            pauseInterval.ToString("F2") +
+            " seconds"
+        );
+
+        ForceUnlockPlayerMovement();
+
+        StartMovementRecovery();
+
+        Debug.Log(
+            "========== GAME RESUMED ==========\n" +
+            "Pause Duration: " +
+            pauseDuration.ToString("F3") +
+            " sec\n" +
+            "Time.timeScale: " +
+            Time.timeScale +
+            "\nNEW INTERVAL STARTED EXACTLY FROM YES."
+        );
+    }
+
+    // =====================================================
+    // FORCE CLOSE PERIODIC PAUSE UI
+    // =====================================================
+
+    private void ForceClosePeriodicPauseUI()
+    {
+        pauseContinueConfirmCurrentlyOpen = false;
+        pausePanelCurrentlyOpen = false;
+
+        pauseContinueConfirmOpenTime = 0f;
+
+        ClosePanel(
+            pauseContinueConfirmPanel,
+            "PANEL_CLOSED_PAUSE_CONTINUE_CONFIRM"
+        );
+
+        ClosePanel(
+            pausePanel,
+            "PANEL_CLOSED_PERIODIC_PAUSE"
+        );
+
+        Time.timeScale = 1f;
+
+        // =================================================
+        // IMPORTANT:
+        //
+        // This method ONLY closes the UI.
+        //
+        // It does NOT:
+        //
+        // pauseRequested = false
+        //
+        // and it does NOT call:
+        //
+        // TryOpenPeriodicPause()
+        //
+        // This prevents an active/pending pause interval
+        // from being accidentally modified during transitions.
+        // =================================================
+
+        ForceUnlockPlayerMovement();
+
+        Debug.Log(
+            "========== PERIODIC PAUSE UI FORCE CLOSED ==========\n" +
+            "Time.timeScale restored to 1.\n" +
+            "pauseRequested remains: " +
+            pauseRequested +
+            "\nPeriodic System Active: " +
+            periodicPauseSystemActive
+        );
+    }
+
+
+    // =====================================================
+    // PAUSE CONTINUE NO
+    // =====================================================
+
+    private void ConfirmPauseContinueNo()
+    {
+        float pauseDuration =
+            Mathf.Max(
+                0f,
+                Time.unscaledTime - pauseStartTime
+            );
+
+        // =====================================================
+        // TCP: FINAL DECISION = NO
+        // =====================================================
+
+        SendTCPEvent(
+            "PAUSE_CONTINUE_CONFIRMED",
+            "PAUSE_DECISION",
+            "SelectedOption=NO" +
+            "; PauseDuration=" +
+            pauseDuration.ToString("F3")
+        );
+
+        pauseContinueConfirmCurrentlyOpen = false;
+        pauseContinueConfirmOpenTime = 0f;
+
+        ClosePanel(
+            pauseContinueConfirmPanel,
+            "PANEL_CLOSED_PAUSE_CONTINUE_CONFIRM"
+        );
+
+        // =====================================================
+        // TCP: CONFIRM PANEL CLOSED
+        // =====================================================
+
+        SendTCPEvent(
+            "PAUSE_CONTINUE_CONFIRM_CLOSED",
+            "PAUSE_EVENT",
+            "Reason=NO_SELECTED"
+        );
+
+        Debug.Log(
+            "Pause Continue NO selected.\n" +
+            "Main PAUSE panel remains open.\n" +
+            "Game remains paused."
+        );
+    }
     // =====================================================
     // OPEN EXIT CONFIRM PANEL
     // =====================================================
@@ -858,6 +1628,8 @@ public class GameManager : MonoBehaviour
             "PANEL_CLOSED_EXIT_CONFIRM"
         );
 
+        StartMovementRecovery();
+
         Debug.Log(
             "Exit NO selected.\n" +
             "Exit Confirm Duration: " +
@@ -973,6 +1745,8 @@ public class GameManager : MonoBehaviour
 
     private void StartMaze(int mazeNumber)
     {
+        Time.timeScale = 1f;
+
         currentMaze = mazeNumber;
 
         stageCompleted = false;
@@ -1015,6 +1789,8 @@ public class GameManager : MonoBehaviour
             "; Attempt=" +
             mazeAttemptCount[mazeNumber]
         );
+
+        StartMovementRecovery();
 
         Debug.Log(
             "Maze " +
@@ -1131,6 +1907,10 @@ public class GameManager : MonoBehaviour
     // GET ATTEMPT TIME MULTIPLIER
     // =====================================================
 
+    // =====================================================
+    // GET ATTEMPT TIME MULTIPLIER
+    // =====================================================
+
     private float GetAttemptTimeMultiplier(int attemptNumber)
     {
         switch (attemptNumber)
@@ -1150,8 +1930,23 @@ public class GameManager : MonoBehaviour
             case 5:
                 return attempt5TimeMultiplier;
 
+            case 6:
+                return attempt6TimeMultiplier;
+
+            case 7:
+                return attempt7TimeMultiplier;
+
+            case 8:
+                return attempt8TimeMultiplier;
+
+            case 9:
+                return attempt9TimeMultiplier;
+
+            case 10:
+                return attempt10TimeMultiplier;
+
             default:
-                return attempt6PlusTimeMultiplier;
+                return attempt11PlusTimeMultiplier;
         }
     }
 
@@ -1271,6 +2066,18 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        if (characterController == null)
+        {
+            characterController =
+                player.GetComponent<CharacterController>();
+
+            if (characterController == null)
+            {
+                characterController =
+                    player.GetComponentInChildren<CharacterController>();
+            }
+        }
+
         if (characterController != null)
             characterController.enabled = false;
 
@@ -1281,6 +2088,8 @@ public class GameManager : MonoBehaviour
 
         if (characterController != null)
             characterController.enabled = true;
+
+        ForceUnlockPlayerMovement();
     }
 
 
@@ -1354,7 +2163,9 @@ public class GameManager : MonoBehaviour
     private void StartMazeTimer()
     {
         StopMazeTimer();
-        timerCoroutine = StartCoroutine(MazeTimer());
+
+        timerCoroutine =
+            StartCoroutine(MazeTimer());
     }
 
 
@@ -1380,6 +2191,7 @@ public class GameManager : MonoBehaviour
         }
 
         UpdateTimerText(0f);
+
         TimerFinished();
     }
 
@@ -1464,6 +2276,7 @@ public class GameManager : MonoBehaviour
         }
 
         int mazeNumberAtEnd = currentMaze;
+
         int attemptNumberAtEnd =
             mazeAttemptCount[currentMaze];
 
@@ -1559,7 +2372,6 @@ public class GameManager : MonoBehaviour
                 .ApplyDecorationsForMaze(0);
         }
 
-        // Keep the failed maze number until its record is saved.
         SetMazeSettings(currentMaze);
 
         MovePlayer(maze01Spawn);
@@ -1571,6 +2383,12 @@ public class GameManager : MonoBehaviour
             timeOverPanel,
             "PANEL_OPENED_TIME_OVER"
         );
+
+        // =================================================
+        // IF PERIODIC PAUSE IS PENDING, OPEN IT NOW.
+        // =================================================
+
+        TryOpenPeriodicPause();
 
         SaveCurrentMazeAttempt(
             "FAILED - TIME OVER",
@@ -1620,18 +2438,32 @@ public class GameManager : MonoBehaviour
 
         while (remainingTime > 0f)
         {
-            if (restartCountdownText != null)
+            // =================================================
+            // IMPORTANT:
+            //
+            // If periodic pause is open, freeze this
+            // countdown too.
+            //
+            // The participant can rest as long as needed.
+            // =================================================
+
+            if (!pausePanelCurrentlyOpen)
             {
-                restartCountdownText.text =
-                    "Restarting from Maze 1 in " +
-                    Mathf.CeilToInt(remainingTime) +
-                    " seconds";
+                if (restartCountdownText != null)
+                {
+                    restartCountdownText.text =
+                        "Restarting from Maze 1 in " +
+                        Mathf.CeilToInt(remainingTime) +
+                        " seconds";
+                }
+
+                remainingTime -= Time.deltaTime;
             }
 
             yield return null;
-
-            remainingTime -= Time.deltaTime;
         }
+
+        ForceClosePeriodicPauseUI();
 
         RestartFromMaze01();
     }
@@ -1643,6 +2475,8 @@ public class GameManager : MonoBehaviour
 
     private void RestartFromMaze01()
     {
+        Time.timeScale = 1f;
+
         ResetAllExitTriggers();
 
         waitingForRestart = false;
@@ -1674,7 +2508,10 @@ public class GameManager : MonoBehaviour
         ResetCoins();
 
         ShowMainTimer();
+
         StartMaze(1);
+
+        StartMovementRecovery();
 
         Debug.Log(
             "New Run started from Maze 1."
@@ -1780,6 +2617,12 @@ public class GameManager : MonoBehaviour
             "PANEL_OPENED_SUCCESS"
         );
 
+        // =================================================
+        // IF PERIODIC PAUSE IS PENDING, OPEN IT NOW.
+        // =================================================
+
+        TryOpenPeriodicPause();
+
         SaveCurrentMazeAttempt(
             "SUCCESS",
             "SUCCESS_PANEL",
@@ -1799,17 +2642,32 @@ public class GameManager : MonoBehaviour
 
         while (remainingTime > 0f)
         {
-            if (successCountdownText != null)
+            // =================================================
+            // IMPORTANT:
+            //
+            // If Pause is open, the Success countdown also
+            // stops.
+            //
+            // This allows the participant to stay in the
+            // periodic pause as long as necessary.
+            // =================================================
+
+            if (!pausePanelCurrentlyOpen)
             {
-                successCountdownText.text =
-                    "Next maze starts in: " +
-                    Mathf.CeilToInt(remainingTime);
+                if (successCountdownText != null)
+                {
+                    successCountdownText.text =
+                        "Next maze starts in: " +
+                        Mathf.CeilToInt(remainingTime);
+                }
+
+                remainingTime -= Time.deltaTime;
             }
 
             yield return null;
-
-            remainingTime -= Time.deltaTime;
         }
+
+        ForceClosePeriodicPauseUI();
 
         ClosePanel(
             successPanel01,
@@ -1840,6 +2698,8 @@ public class GameManager : MonoBehaviour
 
         StartMaze(currentMaze);
 
+        StartMovementRecovery();
+
         successCoroutine = null;
     }
 
@@ -1860,6 +2720,14 @@ public class GameManager : MonoBehaviour
         }
 
         PlayFinalSuccessSound();
+
+        // =================================================
+        // Final success has priority.
+        //
+        // Any periodic pause UI must be closed.
+        // =================================================
+
+        ForceClosePeriodicPauseUI();
 
         OpenPanel(
             finalSuccessPanel,
@@ -1910,6 +2778,8 @@ public class GameManager : MonoBehaviour
 
         gameFinished = true;
 
+        StopPeriodicPauseSystem();
+
         Time.timeScale = 0f;
 
         yield break;
@@ -1934,7 +2804,6 @@ public class GameManager : MonoBehaviour
             remainingTime -= Time.deltaTime;
         }
 
-        // Final Maze Success has priority.
         if (finalSuccessRequestFrame == Time.frameCount)
         {
             Debug.Log(
@@ -1948,7 +2817,6 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        // Exit has priority if it happens in the same frame.
         if (exitRequestedThisFrame)
         {
             Debug.Log(
@@ -1959,6 +2827,7 @@ public class GameManager : MonoBehaviour
             );
 
             exitRequestedThisFrame = false;
+
             yield break;
         }
 
@@ -1995,6 +2864,8 @@ public class GameManager : MonoBehaviour
         exitConfirmPanelCurrentlyOpen = false;
         exitConfirmPanelOpenTime = 0f;
 
+        ForceClosePeriodicPauseUI();
+
         StopMazeTimer();
 
         StopCoroutineIfRunning(
@@ -2024,6 +2895,25 @@ public class GameManager : MonoBehaviour
     {
         if (gameFinished)
             return;
+
+        Time.timeScale = 1f;
+
+        StopPeriodicPauseSystem();
+
+        pausePanelCurrentlyOpen = false;
+        pauseContinueConfirmCurrentlyOpen = false;
+
+        ClosePanel(
+            pauseContinueConfirmPanel,
+            "PANEL_CLOSED_PAUSE_CONTINUE_CONFIRM_EXIT"
+        );
+
+        ClosePanel(
+            pausePanel,
+            "PANEL_CLOSED_PERIODIC_PAUSE_EXIT"
+        );
+
+        ForceUnlockPlayerMovement();
 
         exitRequestedThisFrame = true;
         exitFinishedGame = true;
@@ -2087,6 +2977,23 @@ public class GameManager : MonoBehaviour
         }
 
         gameFinished = true;
+
+        Time.timeScale = 1f;
+
+        StopPeriodicPauseSystem();
+
+        pausePanelCurrentlyOpen = false;
+        pauseContinueConfirmCurrentlyOpen = false;
+
+        ClosePanel(
+            pauseContinueConfirmPanel,
+            "PANEL_CLOSED_PAUSE_CONTINUE_CONFIRM_GAME_FINISHED"
+        );
+
+        ClosePanel(
+            pausePanel,
+            "PANEL_CLOSED_PERIODIC_PAUSE_GAME_FINISHED"
+        );
 
         if (musicManager != null)
             musicManager.StopBackgroundMusic();
@@ -2177,6 +3084,8 @@ public class GameManager : MonoBehaviour
             "; HighestCompletedMaze=" +
             highestCompletedMaze
         );
+
+        ForceUnlockPlayerMovement();
 
         Time.timeScale = 0f;
     }
@@ -2327,7 +3236,7 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // GET HISTORY COPY
+    // GET MAZE VISIT HISTORY
     // =====================================================
 
     public List<MazeVisitRecord> GetMazeVisitHistory()
@@ -2339,7 +3248,7 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // GET EXIT HISTORY COPY
+    // GET EXIT CONFIRM HISTORY
     // =====================================================
 
     public List<ExitConfirmRecord> GetExitConfirmHistory()
@@ -2444,7 +3353,7 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // MANUAL BUTTON EVENT
+    // LOG BUTTON PRESS
     // =====================================================
 
     public void LogButtonPress(string buttonName)
@@ -2460,7 +3369,7 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // MANUAL PANEL OPEN EVENT
+    // LOG PANEL OPENED
     // =====================================================
 
     public void LogPanelOpened(string panelName)
@@ -2476,7 +3385,7 @@ public class GameManager : MonoBehaviour
 
 
     // =====================================================
-    // MANUAL PANEL CLOSE EVENT
+    // LOG PANEL CLOSED
     // =====================================================
 
     public void LogPanelClosed(string panelName)
@@ -2521,6 +3430,278 @@ public class GameManager : MonoBehaviour
 
         StopCoroutine(coroutine);
         coroutine = null;
+    }
+
+
+    // =====================================================
+    // =====================================================
+    // MOVEMENT LOCK RECOVERY SYSTEM
+    // =====================================================
+    // =====================================================
+
+    private void StartMovementRecovery()
+    {
+        if (movementRecoveryCoroutine != null)
+        {
+            StopCoroutine(movementRecoveryCoroutine);
+            movementRecoveryCoroutine = null;
+        }
+
+        movementRecoveryCoroutine =
+            StartCoroutine(
+                MovementRecoveryRoutine()
+            );
+    }
+
+
+    private IEnumerator MovementRecoveryRoutine()
+    {
+        // Immediate pass.
+        ForceUnlockPlayerMovement();
+
+        // Wait one normal frame.
+        yield return null;
+
+        if (Time.timeScale > 0f && !gameFinished)
+        {
+            ForceUnlockPlayerMovement();
+        }
+
+        // Wait another frame.
+        yield return null;
+
+        if (Time.timeScale > 0f && !gameFinished)
+        {
+            ForceUnlockPlayerMovement();
+        }
+
+        movementRecoveryCoroutine = null;
+    }
+
+
+    private void ForceUnlockPlayerMovement()
+    {
+        if (gameFinished)
+        {
+            // Even after finishing, make sure the controller
+            // is not left disabled/locked.
+        }
+
+        // -------------------------------------------------
+        // CharacterController
+        // -------------------------------------------------
+
+        if (characterController == null && player != null)
+        {
+            characterController =
+                player.GetComponent<CharacterController>();
+
+            if (characterController == null)
+            {
+                characterController =
+                    player.GetComponentInChildren<CharacterController>();
+            }
+        }
+
+        if (characterController != null &&
+            !characterController.enabled)
+        {
+            characterController.enabled = true;
+        }
+
+
+        // -------------------------------------------------
+        // Player hierarchy
+        // -------------------------------------------------
+
+        HashSet<MonoBehaviour> behaviours =
+            new HashSet<MonoBehaviour>();
+
+        if (player != null)
+        {
+            MonoBehaviour[] playerBehaviours =
+                player.GetComponentsInChildren<MonoBehaviour>(
+                    true
+                );
+
+            foreach (MonoBehaviour behaviour in playerBehaviours)
+            {
+                if (behaviour != null)
+                    behaviours.Add(behaviour);
+            }
+        }
+
+
+        // -------------------------------------------------
+        // Also inspect the GameObject containing GameManager
+        // and its children.
+        // -------------------------------------------------
+
+        MonoBehaviour[] localBehaviours =
+            GetComponentsInChildren<MonoBehaviour>(true);
+
+        foreach (MonoBehaviour behaviour in localBehaviours)
+        {
+            if (behaviour != null)
+                behaviours.Add(behaviour);
+        }
+
+
+        // -------------------------------------------------
+        // Find every active/inactive MonoBehaviour in scene.
+        // -------------------------------------------------
+
+        MonoBehaviour[] sceneBehaviours =
+            FindObjectsByType<MonoBehaviour>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+        foreach (MonoBehaviour behaviour in sceneBehaviours)
+        {
+            if (behaviour == null)
+                continue;
+
+            string typeName =
+                behaviour.GetType().Name;
+
+            if (typeName.Contains("MovementLock") ||
+                typeName.Contains("ThirdPersonController") ||
+                typeName.Contains("VRThirdPerson"))
+            {
+                behaviours.Add(behaviour);
+            }
+        }
+
+
+        // -------------------------------------------------
+        // Unlock all matching components
+        // -------------------------------------------------
+
+        foreach (MonoBehaviour behaviour in behaviours)
+        {
+            if (behaviour == null)
+                continue;
+
+            TryUnlockBehaviour(behaviour);
+        }
+
+
+        Debug.Log(
+            "========== MOVEMENT RECOVERY ==========\n" +
+            "Time.timeScale: " +
+            Time.timeScale +
+            "\nCharacterController: " +
+            (characterController != null
+                ? characterController.enabled.ToString()
+                : "NULL") +
+            "\nMovement unlock pass completed."
+        );
+    }
+
+
+    private void TryUnlockBehaviour(
+        MonoBehaviour behaviour
+    )
+    {
+        System.Type type =
+            behaviour.GetType();
+
+
+        // -------------------------------------------------
+        // Method:
+        // SetMovementLocked(false)
+        // -------------------------------------------------
+
+        MethodInfo setMovementLockedMethod =
+            type.GetMethod(
+                "SetMovementLocked",
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.Instance
+            );
+
+        if (setMovementLockedMethod != null)
+        {
+            ParameterInfo[] parameters =
+                setMovementLockedMethod.GetParameters();
+
+            if (parameters.Length == 1 &&
+                parameters[0].ParameterType == typeof(bool))
+            {
+                try
+                {
+                    setMovementLockedMethod.Invoke(
+                        behaviour,
+                        new object[] { false }
+                    );
+
+                    Debug.Log(
+                        "Movement unlocked through method: " +
+                        type.Name +
+                        ".SetMovementLocked(false)"
+                    );
+                }
+                catch (System.Exception exception)
+                {
+                    Debug.LogWarning(
+                        "Could not call SetMovementLocked(false) on " +
+                        type.Name +
+                        ".\n" +
+                        exception.Message
+                    );
+                }
+            }
+        }
+
+
+        // -------------------------------------------------
+        // Field:
+        // movementLocked
+        // -------------------------------------------------
+
+        FieldInfo movementLockedField =
+            type.GetField(
+                "movementLocked",
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.Instance
+            );
+
+        if (movementLockedField != null &&
+            movementLockedField.FieldType == typeof(bool))
+        {
+            try
+            {
+                bool oldValue =
+                    (bool)movementLockedField.GetValue(
+                        behaviour
+                    );
+
+                if (oldValue)
+                {
+                    movementLockedField.SetValue(
+                        behaviour,
+                        false
+                    );
+
+                    Debug.Log(
+                        "Movement unlocked through field: " +
+                        type.Name +
+                        ".movementLocked = false"
+                    );
+                }
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogWarning(
+                    "Could not modify movementLocked on " +
+                    type.Name +
+                    ".\n" +
+                    exception.Message
+                );
+            }
+        }
     }
 }
 

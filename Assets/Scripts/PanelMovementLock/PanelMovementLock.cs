@@ -29,6 +29,8 @@ public class PanelMovementLock : MonoBehaviour
                 FindFirstObjectByType<VRThirdPersonController>();
         }
 
+        lastMovementLocked = false;
+
         UpdateMovementLock(true);
     }
 
@@ -57,24 +59,25 @@ public class PanelMovementLock : MonoBehaviour
 
     private void UpdateMovementLock(bool locked)
     {
-        // اگر وضعیت تغییری نکرده، نیازی به فراخوانی مجدد نیست
-        if (!locked &&
-            !lastMovementLocked)
-        {
+        if (locked == lastMovementLocked)
             return;
-        }
-
-        if (locked &&
-            lastMovementLocked)
-        {
-            return;
-        }
 
         lastMovementLocked = locked;
 
         if (vrController != null)
         {
             vrController.SetMovementLocked(locked);
+
+            Debug.Log(
+                "========== MOVEMENT LOCK CHANGED ==========\n" +
+                "Movement Locked: " + locked + "\n" +
+                "Success Panel: " + IsOpen(successPanel) + "\n" +
+                "Transfer Panel: " + IsOpen(transferPanel) + "\n" +
+                "Time Over Panel: " + IsOpen(timeOverPanel) + "\n" +
+                "Finish Panel: " + IsOpen(finishPanel) + "\n" +
+                "Exit Panel: " + IsOpen(exitConfirmPanel) + "\n" +
+                "Start Question: " + IsOpen(startQuestionPanel)
+            );
         }
     }
 

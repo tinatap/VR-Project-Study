@@ -99,6 +99,21 @@ public class ExitMenuController : MonoBehaviour
 
         HandleTriggerInput();
 
+        // =================================================
+        // PAUSE THUMBSTICK HAS PRIORITY OVER EXIT
+        // =================================================
+
+        if (gameManager != null &&
+            gameManager.IsPauseContinueConfirmOpen)
+        {
+            HandlePauseThumbstickInput();
+            return;
+        }
+
+        // =================================================
+        // NORMAL EXIT THUMBSTICK
+        // =================================================
+
         if (!menuOpen)
             return;
 
@@ -114,6 +129,38 @@ public class ExitMenuController : MonoBehaviour
     {
         if (!leftTriggerAction.action.WasPressedThisFrame())
             return;
+
+        // =================================================
+        // PAUSE HAS PRIORITY OVER EXIT
+        // =================================================
+
+        if (gameManager != null &&
+            gameManager.IsPausePanelOpen)
+        {
+            // ---------------------------------------------
+            // Pause Continue Confirmation is already open
+            // ---------------------------------------------
+
+            if (gameManager.IsPauseContinueConfirmOpen)
+            {
+                gameManager.ConfirmPauseContinueSelection();
+            }
+            else
+            {
+                // -----------------------------------------
+                // Pause Panel is open:
+                // Left Trigger opens Continue Confirmation
+                // -----------------------------------------
+
+                gameManager.HandlePauseLeftTrigger();
+            }
+
+            return;
+        }
+
+        // =================================================
+        // NORMAL EXIT BEHAVIOR
+        // =================================================
 
         if (!menuOpen)
         {
@@ -162,6 +209,30 @@ public class ExitMenuController : MonoBehaviour
         }
     }
 
+    // =====================================================
+    // PAUSE THUMBSTICK INPUT
+    // =====================================================
+
+    private void HandlePauseThumbstickInput()
+    {
+        if (gameManager == null)
+            return;
+
+        Vector2 stick =
+            leftThumbstickAction.action.ReadValue<Vector2>();
+
+        if (stick.sqrMagnitude > 0.01f)
+        {
+            Debug.Log(
+                "Pause Left Stick: " +
+                stick
+            );
+        }
+
+        gameManager.UpdatePauseContinueSelectionFromThumbstick(
+            stick
+        );
+    }
 
     // =====================================================
     // SELECT YES
